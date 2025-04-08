@@ -1,4 +1,29 @@
 [project]
-name = "klippy"
-version = "0.1.0"
-description = "My small project"
+name = "klipper"
+version = "0.13.0"
+description = "The Klipper firmware controls 3d-Printers"
+dependencies = [
+    "cffi==1.14.6",
+    "pyserial==3.4",
+    "greenlet==2.0.2 ; python_version < '3.12'",
+    "greenlet==3.0.3 ; python_version >= '3.12'",
+    "Jinja2==2.11.3",
+    "python-can==3.3.4",
+    "markupsafe==1.1.1",
+    "setuptools==75.6.0 ; python_version >= '3.12'" # Needed by python-can
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["klippy", "klippy.chelper", "klippy.extras", "klippy.extras.display", "klippy.kinematics"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["config", "docs", "scripts", "klippy"]
+exclude = ["lib", "out", "src", "test"]
+
+[project.entry-points."klipper"]
+klippy = "klippy:main"
