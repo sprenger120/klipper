@@ -19,11 +19,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["klippy", "klippy.chelper", "klippy.extras", "klippy.extras.display", "klippy.kinematics"]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["config", "docs", "scripts", "klippy"]
-exclude = ["lib", "out", "src", "test"]
-
-[project.entry-points."klipper"]
-klippy = "klippy:main"
