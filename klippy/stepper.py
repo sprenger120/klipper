@@ -436,13 +436,6 @@ def LookupMultiRail(config, need_position_minmax=True,
         rail.add_extra_stepper(config.getsection(config.get_name() + str(i)))
     return rail
 
-
-# Returns Dictionary where the Key is a stepper_... config section name and the value the extracted axis name (...)
-def getAxisNamesWithConfigSection(config : ConfigWrapper) -> Dict[str, str]:
-    raw_config: RawConfigParser = config.fileconfig
-    all_axis : Dict[str, str] = {}
-    for section in raw_config.sections():
-        DELIMITER = "_"
-        if section.startswith('stepper' + DELIMITER):
-            all_axis[section] = section.split(DELIMITER)[1]
-    return all_axis
+# One Stepper = One Axis on this klipper fork
+def getNumberOfAxis(config : ConfigWrapper) -> int:
+    return sum(s.startswith("stepper_") for s in config.fileconfig.sections())

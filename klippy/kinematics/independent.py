@@ -10,8 +10,9 @@ from configparser import RawConfigParser
 from klippy.configfile import ConfigWrapper
 from klippy.toolhead import ToolHead
 from klippy.klippy import Printer
-from klippy.stepper import PrinterStepper, MCU_stepper, error, getAxisNamesWithConfigSection
+from klippy.stepper import PrinterStepper, MCU_stepper, error, getNumberOfAxis
 from klippy.gcode import Coord
+from klippy.variable_axis_count import enumerate_axis
 
 
 class IndependentKinematics:
@@ -20,12 +21,19 @@ class IndependentKinematics:
         self._toolhead: ToolHead = toolhead
 
         self._steppers: [Dict[str, MCU_stepper]] = []
+        self._number_of_axis: int = getNumberOfAxis(config)
 
         # load MCU_Stepper instances
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
         # To not have to modify the GCode interface steppers are numerated alphabetically
-        # scheme: index 0: aa, 1: ab, ..., 25th: az, 26: aaa, 27: aab
-        for section_name, axis_name in getAxisNamesWithConfigSection(config):
+        # Also enforces clear naming without gaps
+        for axis_name in enumerate_axis(self._number_of_axis).keys():
+            section_name = "stepper_" + axis_name
+            if not config.has_section(section_name):
+                raise error(
+                    "Config section {} not found. You defined {} stepper sections but there is an enumeration gap."
+                    .format(section_name, self._number_of_axis))
+
             inst = self._create_and_setup_mcu_stepper_inst(config.getsection(section_name))
             if inst is None:
                 raise error("Creation of MCU_Stepper instance failed")

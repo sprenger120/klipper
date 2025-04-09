@@ -1,0 +1,26 @@
+# Helper functions for handling non-fixed amount of axis and their naming scheme
+#
+# Copyright (C) 2025 Michael Albrecht (micha.albrecht95@gmail.com)
+#
+# This file may be distributed under the terms of the GNU GPLv3 license.
+
+from typing import Dict
+from string import ascii_lowercase
+
+
+# Returns dictionary of {axis name: 0-based index}
+# Axis name consists of english alphabet letters in the following scheme:
+# 0: aa, 1: ab, 2: ac, ..., 25: az, 26: aaa, 27: aab, ...
+def enumerate_axis(number_of_axis: int) -> Dict[str, int]:
+    prefix = 'a'
+    output : Dict[str, int] = {}
+    while len(output) < number_of_axis:
+        for letter in ascii_lowercase:
+            output[prefix + letter] = len(output)
+            if len(output) == number_of_axis:
+                break
+        prefix += prefix[0]
+    return output
+
+
+
