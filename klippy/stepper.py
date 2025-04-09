@@ -5,6 +5,11 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging, collections
 import chelper
+from typing import Dict
+
+from klippy.configfile import ConfigWrapper
+from configparser import RawConfigParser
+
 
 class error(Exception):
     pass
@@ -430,3 +435,14 @@ def LookupMultiRail(config, need_position_minmax=True,
             break
         rail.add_extra_stepper(config.getsection(config.get_name() + str(i)))
     return rail
+
+
+# Returns Dictionary where the Key is a stepper_... config section name and the value the extracted axis name (...)
+def getAxisNamesWithConfigSection(config : ConfigWrapper) -> Dict[str, str]:
+    raw_config: RawConfigParser = config.fileconfig
+    all_axis : Dict[str, str] = {}
+    for section in raw_config.sections():
+        DELIMITER = "_"
+        if section.startswith('stepper' + DELIMITER):
+            all_axis[section] = section.split(DELIMITER)[1]
+    return all_axis

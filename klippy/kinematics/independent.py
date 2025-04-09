@@ -10,7 +10,7 @@ from configparser import RawConfigParser
 from klippy.configfile import ConfigWrapper
 from klippy.toolhead import ToolHead
 from klippy.klippy import Printer
-from klippy.stepper import PrinterStepper, MCU_stepper, error
+from klippy.stepper import PrinterStepper, MCU_stepper, error, getAxisNamesWithConfigSection
 from klippy.gcode import Coord
 
 
@@ -18,7 +18,6 @@ class IndependentKinematics:
     def __init__(self, toolhead: ToolHead, config: ConfigWrapper):
         self._printer: Printer = config.get_printer()
         self._toolhead: ToolHead = toolhead
-        self._raw_config: RawConfigParser = config.fileconfig
 
         self._steppers: [Dict[str, MCU_stepper]] = []
 
@@ -26,14 +25,11 @@ class IndependentKinematics:
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
         # To not have to modify the GCode interface steppers are numerated alphabetically
         # scheme: index 0: aa, 1: ab, ..., 25th: az, 26: aaa, 27: aab
-        for section in self._raw_config.sections():
-            DELIMITER = "_"
-            if section.startswith('stepper' + DELIMITER):
-                axis_name: str = section.split(DELIMITER)[1]
-                inst = self._create_and_setup_mcu_stepper_inst(config.getsection(section))
-                if inst is None:
-                    raise error("Creation of MCU_Stepper instance failed")
-                self._steppers.append({axis_name: inst})
+        for section_name, axis_name in getAxisNamesWithConfigSection(config):
+            inst = self._create_and_setup_mcu_stepper_inst(config.getsection(section_name))
+            if inst is None:
+                raise error("Creation of MCU_Stepper instance failed")
+            self._steppers.append({axis_name: inst})
 
         # toolhead.Coord is fixed to X,Y,Z,E coordinates
         # Leaving it for now until a solution that satisfies our dynamic amount of steppers is found
