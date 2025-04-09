@@ -4,6 +4,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
+from klippy.stepper import getNumberOfAxis
 
 class GCodeMove:
     def __init__(self, config):
@@ -39,16 +40,17 @@ class GCodeMove:
         self.Coord = gcode.Coord
         # G-Code coordinate manipulation
         self.absolute_coord = self.absolute_extrude = True
-        self.base_position = [0.0, 0.0, 0.0, 0.0]
-        self.last_position = [0.0, 0.0, 0.0, 0.0]
-        self.homing_position = [0.0, 0.0, 0.0, 0.0]
+        self.number_of_axis = getNumberOfAxis(config)
+        self.base_position = [0.0] * self.number_of_axis
+        self.last_position = [0.0] * self.number_of_axis
+        self.homing_position = [0.0] * self.number_of_axis
         self.speed = 25.
         self.speed_factor = 1. / 60.
         self.extrude_factor = 1.
         # G-Code state
         self.saved_states = {}
         self.move_transform = self.move_with_transform = None
-        self.position_with_transform = (lambda: [0., 0., 0., 0.])
+        self.position_with_transform = (lambda: [0.0] * self.number_of_axis)
     def _handle_ready(self):
         self.is_printer_ready = True
         if self.move_transform is None:
