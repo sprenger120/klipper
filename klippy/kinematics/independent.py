@@ -3,24 +3,38 @@
 # Copyright (C) 2025 Michael Albrecht (micha.albrecht95@gmail.com)
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import stepper
-from . import idex_modes
 
-
-import os
-print(os.getcwd())
+from typing import Dict
+from configparser import RawConfigParser
 
 from klippy.configfile import ConfigWrapper
 from klippy.toolhead import ToolHead
+from klippy.klippy import Printer
+from klippy.stepper import PrinterStepper, MCU_stepper
 
 class IndependentKinematics:
     def __init__(self, toolhead : ToolHead, config : ConfigWrapper):
-        self.printer = config.get_printer()
-        self.test = config.section
+        self._printer : Printer = config.get_printer()
+        self._toolhead : ToolHead = toolhead
+        self._raw_config : RawConfigParser = config.fileconfig
+
+        self._steppers : [Dict[str, MCU_stepper]] = []
+
+        # load MCU_Stepper instances
+        # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
+        # To not have to modify the GCode interface steppers are numerated alphabetically
+        # scheme: index 0: aa, 1: ab, ..., 25th: az, 26: aaa, 27: aab
+        for section in self._raw_config.sections():
+            DELIMITER = "_"
+            if section.startswith('stepper' + DELIMITER):
+                axis_name : str = section.split(DELIMITER)[1]
+                # PrinterStepper is a helper function to create a MCU_Stepper object
+                inst = PrinterStepper(config.getsection(section))
+                self._steppers.append({axis_name : inst})
 
         self.axes_minmax = toolhead.Coord(0., 0., 0., 0.)
-    def get_steppers(self):
-        return []
+    def get_steppers(self) -> [MCU_stepper]:
+        return [stepper for axis_name, stepper in self._steppers]
     def calc_position(self, stepper_positions):
         return [0, 0, 0]
     def set_position(self, newpos, homing_axes):
