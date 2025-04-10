@@ -1,5 +1,7 @@
-#ifndef TRAPQ_H
-#define TRAPQ_H
+#pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "list.h" // list_node
 
@@ -50,4 +52,6 @@ void trapq_set_position(struct trapq *tq, double print_time
 int trapq_extract_old(struct trapq *tq, struct pull_move *p, int max
                       , double start_time, double end_time);
 
-#endif // trapq.h
+#ifdef __cplusplus
+}
+#endif
