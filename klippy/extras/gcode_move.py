@@ -5,6 +5,8 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
 from klippy.stepper import getNumberOfAxis
+from klippy.variable_axis_count import enumerate_axis_uppercase
+from typing import Dict
 
 class GCodeMove:
     def __init__(self, config):
@@ -110,13 +112,16 @@ class GCodeMove:
         }
     def reset_last_position(self):
         if self.is_printer_ready:
-            self.last_position = self.position_with_transform()
+            updated_last_pos = self.position_with_transform()
+            if len(updated_last_pos) != self.number_of_axis:
+                raise "position_with_transform() returned an incorrectly sized array."
+            self.last_position = updated_last_pos
     # G-Code movement commands
     def cmd_G1(self, gcmd):
         # Move
-        params = gcmd.get_command_parameters()
+        params : Dict[str, str] = gcmd.get_command_parameters()
         try:
-            for pos, axis in enumerate('XYZ'):
+            for axis, pos in enumerate_axis_uppercase(self.number_of_axis).items():
                 if axis in params:
                     v = float(params[axis])
                     if not self.absolute_coord:
@@ -125,14 +130,6 @@ class GCodeMove:
                     else:
                         # value relative to base coordinate position
                         self.last_position[pos] = v + self.base_position[pos]
-            if 'E' in params:
-                v = float(params['E']) * self.extrude_factor
-                if not self.absolute_coord or not self.absolute_extrude:
-                    # value relative to position of last move
-                    self.last_position[3] += v
-                else:
-                    # value relative to base coordinate position
-                    self.last_position[3] = v + self.base_position[3]
             if 'F' in params:
                 gcode_speed = float(params['F'])
                 if gcode_speed <= 0.:
@@ -164,6 +161,7 @@ class GCodeMove:
         self.absolute_coord = False
     def cmd_G92(self, gcmd):
         # Set position
+        raise "This code path is not modified for independent moves yet"
         offsets = [ gcmd.get_float(a, None) for a in 'XYZE' ]
         for i, offset in enumerate(offsets):
             if offset is not None:
