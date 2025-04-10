@@ -12,7 +12,7 @@ from klippy.toolhead import ToolHead
 from klippy.klippy import Printer
 from klippy.stepper import PrinterStepper, MCU_stepper, error, getNumberOfAxis
 from klippy.gcode import Coord
-from klippy.variable_axis_count import enumerate_axis
+from klippy.variable_axis_count import enumerate_axis_lowercase
 
 
 class IndependentKinematics:
@@ -27,7 +27,7 @@ class IndependentKinematics:
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
         # To not have to modify the GCode interface steppers are numerated alphabetically
         # Also enforces clear naming without gaps
-        for axis_name in enumerate_axis(self._number_of_axis).keys():
+        for axis_name in enumerate_axis_lowercase(self._number_of_axis).keys():
             section_name = "stepper_" + axis_name
             if not config.has_section(section_name):
                 raise error(
