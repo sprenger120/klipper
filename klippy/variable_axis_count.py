@@ -13,7 +13,7 @@ from string import ascii_lowercase
 # 0: aa, 1: ab, 2: ac, ..., 25: az, 26: aaa, 27: aab, ...
 def enumerate_axis(number_of_axis: int) -> Dict[str, int]:
     prefix = 'a'
-    output : Dict[str, int] = {}
+    output: Dict[str, int] = {}
     while len(output) < number_of_axis:
         for letter in ascii_lowercase:
             output[prefix + letter] = len(output)
@@ -21,6 +21,3 @@ def enumerate_axis(number_of_axis: int) -> Dict[str, int]:
                 break
         prefix += prefix[0]
     return output
-
-
-
