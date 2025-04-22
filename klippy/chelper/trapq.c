@@ -13,10 +13,12 @@
 
 // Allocate a new 'move' object
 struct move *
-move_alloc(void)
+move_alloc(size_t const number_of_axis)
 {
     struct move *m = malloc(sizeof(*m));
     memset(m, 0, sizeof(*m));
+    m->start_pos = coord_alloc(number_of_axis);
+    m->axis_r = coord_alloc(number_of_axis);
     return m;
 }
 
@@ -42,16 +44,18 @@ move_get_coord(struct move *m, double move_time)
 
 // Allocate a new 'trapq' object
 struct trapq * __visible
-trapq_alloc(void)
+trapq_alloc(size_t number_of_axis)
 {
     struct trapq *tq = malloc(sizeof(*tq));
     memset(tq, 0, sizeof(*tq));
     list_init(&tq->moves);
     list_init(&tq->history);
-    struct move *head_sentinel = move_alloc(), *tail_sentinel = move_alloc();
+    struct move *head_sentinel = move_alloc(number_of_axis);
+    struct move *tail_sentinel = move_alloc(number_of_axis);
     tail_sentinel->print_time = tail_sentinel->move_t = NEVER_TIME;
     list_add_head(&head_sentinel->node, &tq->moves);
     list_add_tail(&tail_sentinel->node, &tq->moves);
+    tq->number_of_axis = number_of_axis;
     return tq;
 }
 
@@ -62,15 +66,35 @@ trapq_free(struct trapq *tq)
     while (!list_empty(&tq->moves)) {
         struct move *m = list_first_entry(&tq->moves, struct move, node);
         list_del(&m->node);
+        coord_free(&(m->start_pos));
+        coord_free(&(m->axis_r));
         free(m);
     }
     while (!list_empty(&tq->history)) {
         struct move *m = list_first_entry(&tq->history, struct move, node);
         list_del(&m->node);
+        coord_free(&(m->start_pos));
+        coord_free(&(m->axis_r));
         free(m);
     }
     free(tq);
 }
+
+struct coord coord_alloc(size_t number_of_axis)
+{
+    const size_t size_in_bytes = sizeof(double) * number_of_axis;
+    struct coord c;
+    c.axis = malloc(size_in_bytes);
+    memset(c.axis, 0, size_in_bytes);
+    return c;
+}
+
+void coord_free(struct coord * c)
+{
+    free(c->axis);
+    c->axis = NULL;
+}
+
 
 // Update the list sentinels
 void
@@ -101,7 +125,7 @@ trapq_add_move(struct trapq *tq, struct move *m)
     struct move *prev = list_prev_entry(tail_sentinel, node);
     if (prev->print_time + prev->move_t < m->print_time) {
         // Add a null move to fill time gap
-        struct move *null_move = move_alloc();
+        struct move *null_move = move_alloc(tq->number_of_axis);
         null_move->start_pos = m->start_pos;
         if (!prev->print_time && m->print_time > MAX_NULL_MOVE)
             // Limit the first null move to improve numerical stability
@@ -119,10 +143,10 @@ trapq_add_move(struct trapq *tq, struct move *m)
 void __visible
 trapq_append(struct trapq *tq, double print_time
              , double accel_t, double cruise_t, double decel_t
-             , double start_pos_x, double start_pos_y, double start_pos_z
-             , double axes_r_x, double axes_r_y, double axes_r_z
+             , double start_positions[], double axes_r[]
              , double start_v, double cruise_v, double accel)
 {
+    // todo modify after api change
     struct coord start_pos = { .x=start_pos_x, .y=start_pos_y, .z=start_pos_z };
     struct coord axes_r = { .x=axes_r_x, .y=axes_r_y, .z=axes_r_z };
     if (accel_t) {

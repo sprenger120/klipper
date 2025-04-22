@@ -6,44 +6,41 @@ extern "C" {
 #include "list.h" // list_node
 
 struct coord {
-    union {
-        struct {
-            double x, y, z;
-        };
-        double axis[3];
-    };
+    double * axis;
 };
 
 struct move {
     double print_time, move_t;
     double start_v, half_accel;
-    struct coord start_pos, axes_r;
+    struct coord start_pos;
+    struct coord axis_r;
 
     struct list_node node;
 };
 
 struct trapq {
     struct list_head moves, history;
+    size_t number_of_axis;
 };
 
 struct pull_move {
+    // todo check usages and allocate/free memory
     double print_time, move_t;
     double start_v, accel;
-    double start_x, start_y, start_z;
-    double x_r, y_r, z_r;
+    struct coord start_pos;
+    struct coord axis_r;
 };
 
-struct move *move_alloc(void);
+struct move *move_alloc(size_t number_of_axis);
 double move_get_distance(struct move *m, double move_time);
 struct coord move_get_coord(struct move *m, double move_time);
-struct trapq *trapq_alloc(void);
+struct trapq *trapq_alloc(size_t number_of_axis);
 void trapq_free(struct trapq *tq);
 void trapq_check_sentinels(struct trapq *tq);
 void trapq_add_move(struct trapq *tq, struct move *m);
 void trapq_append(struct trapq *tq, double print_time
                   , double accel_t, double cruise_t, double decel_t
-                  , double start_pos_x, double start_pos_y, double start_pos_z
-                  , double axes_r_x, double axes_r_y, double axes_r_z
+                  , double start_positions[], double axes_r[]
                   , double start_v, double cruise_v, double accel);
 void trapq_finalize_moves(struct trapq *tq, double print_time
                           , double clear_history_time);
@@ -51,6 +48,9 @@ void trapq_set_position(struct trapq *tq, double print_time
                         , double pos_x, double pos_y, double pos_z);
 int trapq_extract_old(struct trapq *tq, struct pull_move *p, int max
                       , double start_time, double end_time);
+
+struct coord coord_alloc(size_t number_of_axis);
+void coord_free(struct coord *);
 
 #ifdef __cplusplus
 }
