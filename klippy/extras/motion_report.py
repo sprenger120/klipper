@@ -81,6 +81,7 @@ class DumpTrapQ:
         ffi_main, ffi_lib = chelper.get_ffi()
         res = []
         while 1:
+            raise "this codepath is not updated to the new pull_move signature"
             data = ffi_main.new('struct pull_move[128]')
             count = ffi_lib.trapq_extract_old(self.trapq, data, len(data),
                                               start_time, end_time)

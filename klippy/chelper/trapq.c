@@ -29,15 +29,15 @@ move_get_distance(struct move *m, double move_time)
     return (m->start_v + m->half_accel * move_time) * move_time;
 }
 
-// Return the XYZ coordinates given a time in a move
-inline struct coord
-move_get_coord(struct move *m, double move_time)
+// Sets c_dest to the coordinates given a time in a move
+void
+move_get_coord(struct move *m, double move_time, size_t number_of_axis, double * c_dest)
 {
     double move_dist = move_get_distance(m, move_time);
-    return (struct coord) {
-        .x = m->start_pos.x + m->axes_r.x * move_dist,
-        .y = m->start_pos.y + m->axes_r.y * move_dist,
-        .z = m->start_pos.z + m->axes_r.z * move_dist };
+    for (size_t i = 0; i < number_of_axis; i++)
+    {
+        c_dest[i] = m->start_pos.axis[i] + m->axis_r.axis[i] * move_dist;
+    }
 }
 
 #define NEVER_TIME 9999999999999999.9
@@ -143,46 +143,44 @@ trapq_add_move(struct trapq *tq, struct move *m)
 void __visible
 trapq_append(struct trapq *tq, double print_time
              , double accel_t, double cruise_t, double decel_t
-             , double start_positions[], double axes_r[]
+             , double start_pos[], double axes_r[]
              , double start_v, double cruise_v, double accel)
 {
-    // todo modify after api change
-    struct coord start_pos = { .x=start_pos_x, .y=start_pos_y, .z=start_pos_z };
-    struct coord axes_r = { .x=axes_r_x, .y=axes_r_y, .z=axes_r_z };
+    // todo check that modifying start_pos and axes_r is safe
     if (accel_t) {
-        struct move *m = move_alloc();
+        struct move *m = move_alloc(tq->number_of_axis);
         m->print_time = print_time;
         m->move_t = accel_t;
         m->start_v = start_v;
         m->half_accel = .5 * accel;
-        m->start_pos = start_pos;
-        m->axes_r = axes_r;
+        memcpy(m->start_pos.axis, start_pos, sizeof(double) * tq->number_of_axis);
+        memcpy(m->axis_r.axis, axes_r, sizeof(double) * tq->number_of_axis);
         trapq_add_move(tq, m);
 
         print_time += accel_t;
-        start_pos = move_get_coord(m, accel_t);
+        move_get_coord(m, accel_t, tq->number_of_axis, start_pos);
     }
     if (cruise_t) {
-        struct move *m = move_alloc();
+        struct move *m = move_alloc(tq->number_of_axis);
         m->print_time = print_time;
         m->move_t = cruise_t;
         m->start_v = cruise_v;
         m->half_accel = 0.;
-        m->start_pos = start_pos;
-        m->axes_r = axes_r;
+        memcpy(m->start_pos.axis, start_pos, sizeof(double) * tq->number_of_axis);
+        memcpy(m->axis_r.axis, axes_r, sizeof(double) * tq->number_of_axis);
         trapq_add_move(tq, m);
 
         print_time += cruise_t;
-        start_pos = move_get_coord(m, cruise_t);
+        move_get_coord(m, cruise_t, tq->number_of_axis, start_pos);
     }
     if (decel_t) {
-        struct move *m = move_alloc();
+        struct move *m = move_alloc(tq->number_of_axis);
         m->print_time = print_time;
         m->move_t = decel_t;
         m->start_v = cruise_v;
         m->half_accel = -.5 * accel;
-        m->start_pos = start_pos;
-        m->axes_r = axes_r;
+        memcpy(m->start_pos.axis, start_pos, sizeof(double) * tq->number_of_axis);
+        memcpy(m->axis_r.axis, axes_r, sizeof(double) * tq->number_of_axis);
         trapq_add_move(tq, m);
     }
 }
@@ -225,7 +223,7 @@ trapq_finalize_moves(struct trapq *tq, double print_time
 // Note a position change in the trapq history
 void __visible
 trapq_set_position(struct trapq *tq, double print_time
-                   , double pos_x, double pos_y, double pos_z)
+                   , double const pos[])
 {
     // Flush all moves from trapq
     trapq_finalize_moves(tq, NEVER_TIME, 0);
@@ -243,12 +241,30 @@ trapq_set_position(struct trapq *tq, double print_time
     }
 
     // Add a marker to the trapq history
-    struct move *m = move_alloc();
+    struct move *m = move_alloc(tq->number_of_axis);
     m->print_time = print_time;
-    m->start_pos.x = pos_x;
-    m->start_pos.y = pos_y;
-    m->start_pos.z = pos_z;
+    for (size_t i = 0; i < tq->number_of_axis; i++)
+    {
+        m->start_pos.axis[i] = pos[i];
+    }
     list_add_head(&m->node, &tq->history);
+}
+
+
+struct pull_move * alloc_pull_move(size_t number_of_axis)
+{
+    struct pull_move *p = malloc(sizeof(*p));
+    memset(p, 0, sizeof(*p));
+    p->start_pos = coord_alloc(number_of_axis);
+    p->axis_r = coord_alloc(number_of_axis);
+    return p;
+}
+
+void free_pull_move(struct pull_move *p)
+{
+    coord_free(&(p->start_pos));
+    coord_free(&(p->axis_r));
+    free(p);
 }
 
 // Return history of movement queue
@@ -267,12 +283,8 @@ trapq_extract_old(struct trapq *tq, struct pull_move *p, int max
         p->move_t = m->move_t;
         p->start_v = m->start_v;
         p->accel = 2. * m->half_accel;
-        p->start_x = m->start_pos.x;
-        p->start_y = m->start_pos.y;
-        p->start_z = m->start_pos.z;
-        p->x_r = m->axes_r.x;
-        p->y_r = m->axes_r.y;
-        p->z_r = m->axes_r.z;
+        memcpy(p->start_pos.axis, m->start_pos.axis, sizeof(double) * tq->number_of_axis);
+        memcpy(p->axis_r.axis, m->axis_r.axis, sizeof(double) * tq->number_of_axis);
         p++;
         res++;
     }
