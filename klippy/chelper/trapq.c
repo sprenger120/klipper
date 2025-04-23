@@ -40,6 +40,12 @@ move_get_coord(struct move *m, double move_time, size_t number_of_axis, double *
     }
 }
 
+double move_get_coord_of_axis(struct move *m, double move_time, size_t axis_index)
+{
+    double move_dist = move_get_distance(m, move_time);
+    return m->start_pos.axis[axis_index] + m->axis_r.axis[axis_index] * move_dist;
+}
+
 #define NEVER_TIME 9999999999999999.9
 
 // Allocate a new 'trapq' object

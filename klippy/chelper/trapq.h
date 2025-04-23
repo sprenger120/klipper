@@ -34,6 +34,8 @@ struct move *move_alloc(size_t number_of_axis);
 double move_get_distance(struct move *m, double move_time);
 void move_get_coord(struct move *m, double move_time, size_t number_of_axis,
                     double * c_dest);
+double move_get_coord_of_axis(struct move *m, double move_time, size_t axis_index);
+
 struct trapq *trapq_alloc(size_t number_of_axis);
 void trapq_free(struct trapq *tq);
 void trapq_check_sentinels(struct trapq *tq);

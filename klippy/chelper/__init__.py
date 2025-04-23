@@ -218,10 +218,19 @@ defs_std = """
     void free(void*);
 """
 
+defs_kin_independent = """
+    struct stepper_kinematics * 
+        independent_stepper_alloc(size_t axis_index);
+    double
+    ind_stepper_calc_position(struct stepper_kinematics *sk, struct move *m
+        , double move_time);
+"""
+
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std, defs_stepcompress,
     defs_itersolve, defs_trapq, defs_trdispatch,
-    defs_kin_cartesian,
+    defs_kin_independent,
+    #defs_kin_cartesian,
     #defs_kin_corexy, defs_kin_corexz, defs_kin_delta,
     #defs_kin_deltesian, defs_kin_polar, defs_kin_rotary_delta, defs_kin_winch,
     #defs_kin_extruder, #defs_kin_shaper, #defs_kin_idex,

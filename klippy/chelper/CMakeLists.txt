@@ -9,7 +9,8 @@ endif ()
 # c_helper.so
 add_library(${PROJECT_NAME} SHARED
         itersolve.c
-        kin_cartesian.c
+        kin_independent.c
+        #kin_cartesian.c
         #kin_corexy.c
         #kin_corexz.c
         #kin_delta.c

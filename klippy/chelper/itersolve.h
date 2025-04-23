@@ -18,7 +18,7 @@ struct stepper_kinematics {
 
     double last_flush_time, last_move_time;
     struct trapq *tq;
-    int active_flags;
+    size_t active_axis_index;
     double gen_steps_pre_active, gen_steps_post_active;
 
     sk_calc_callback calc_position_cb;
