@@ -10,12 +10,12 @@ from string import ascii_lowercase, ascii_uppercase
 
 # Returns dictionary of {axis name: 0-based index}
 # Axis name consists of lowercase english alphabet letters in the following scheme:
-# 0: aa, 1: ab, 2: ac, ..., 25: az, 26: aaa, 27: aab, ...
+# aa: 0, ab: 1, ac: 2, ..., az: 25, aaa: 26, aab: 27, ...
 def enumerate_axis_lowercase(number_of_axis: int) -> Dict[str, int]:
     return _enumerate_axis(number_of_axis, 'a', ascii_lowercase)
 
 
-# 0: AA, 1: AB, 2: AC, ..., 25: AZ, 26: AAA, 27: AAB, ...'
+# AA: 0, AB: 1, AC: 2, ..., AZ: 25, AAA: 26, AAB: 27, ...'
 def enumerate_axis_uppercase(number_of_axis: int) -> Dict[str, int]:
     return _enumerate_axis(number_of_axis, 'A', ascii_uppercase)
 
