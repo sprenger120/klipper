@@ -20,24 +20,29 @@ class IndependentKinematics:
         self._printer: Printer = config.get_printer()
         self._toolhead: ToolHead = toolhead
 
-        self._steppers: [Dict[str, MCU_stepper]] = []
+        self._steppers: Dict[str, MCU_stepper] = {}
         self._number_of_axis: int = getNumberOfAxis(config)
 
         # load MCU_Stepper instances
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
         # To not have to modify the GCode interface steppers are numerated alphabetically
         # Also enforces clear naming without gaps
-        for axis_name in enumerate_axis_lowercase(self._number_of_axis).keys():
+        # todo check that this still works correctly and name and index isnt swapped
+        for axis_name, axis_index in enumerate_axis_lowercase(self._number_of_axis).items():
             section_name = "stepper_" + axis_name
             if not config.has_section(section_name):
                 raise error(
                     "Config section {} not found. You defined {} stepper sections but there is an enumeration gap."
                     .format(section_name, self._number_of_axis))
 
-            inst = self._create_and_setup_mcu_stepper_inst(config.getsection(section_name))
+            inst = self._create_and_setup_mcu_stepper_inst(config.getsection(section_name), axis_index)
             if inst is None:
                 raise error("Creation of MCU_Stepper instance failed")
-            self._steppers.append({axis_name: inst})
+            self._steppers[axis_name] = inst
+
+        # register stepper instances with ToolHead
+        for stepper in self._steppers.values():
+            self._toolhead.register_step_generator(stepper.generate_steps)
 
         # toolhead.Coord is fixed to X,Y,Z,E coordinates
         # Leaving it for now until a solution that satisfies our dynamic amount of steppers is found
@@ -68,14 +73,15 @@ class IndependentKinematics:
             'axis_maximum': self.axes_minmax,
         }
 
-    def _create_and_setup_mcu_stepper_inst(self, stepper_section_config: ConfigWrapper) -> MCU_stepper | None:
+    def _create_and_setup_mcu_stepper_inst(self, stepper_section_config: ConfigWrapper, axis_index: int) -> MCU_stepper | None:
         # PrinterStepper is a helper function to create an MCU_Stepper object
         inst: MCU_stepper = PrinterStepper(stepper_section_config)
 
-        # cartesian_stepper_alloc will set a calc_position callback internally depending on axis name
-        # it has callbacks for X,Y,Z and nothing else. Not having a callback may come back to bite.
-        fake_axis = "0"
-        inst.setup_itersolve('cartesian_stepper_alloc', fake_axis.encode())
+        # todo check if axis_index can be transferred like that
+        inst.setup_itersolve('ind_stepper_calc_position', axis_index)
+
+        # all steppers must be able to move at the same time, so they get to share the same trapq
+        inst.set_trapq(self._toolhead.get_trapq())
         return inst
 
 
