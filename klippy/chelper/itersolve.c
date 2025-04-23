@@ -136,10 +136,7 @@ itersolve_gen_steps_range(struct stepper_kinematics *sk, struct move *m
 static inline int
 check_active(struct stepper_kinematics *sk, struct move *m)
 {
-    int af = sk->active_flags;
-    return ((af & AF_X && m->axes_r.x != 0.)
-            || (af & AF_Y && m->axes_r.y != 0.)
-            || (af & AF_Z && m->axes_r.z != 0.));
+    return m->axis_r.axis[sk->active_axis_index] != 0.;
 }
 
 // Generate step times for a range of moves on the trapq
@@ -232,11 +229,9 @@ itersolve_check_active(struct stepper_kinematics *sk, double flush_time)
 
 // Report if the given stepper is registered for the given axis
 int32_t __visible
-itersolve_is_active_axis(struct stepper_kinematics *sk, char axis)
+itersolve_is_active_axis(struct stepper_kinematics *sk, size_t axis)
 {
-    if (axis < 'x' || axis > 'z')
-        return 0;
-    return (sk->active_flags & (AF_X << (axis - 'x'))) != 0;
+    return sk->active_axis_index == axis;
 }
 
 void __visible
