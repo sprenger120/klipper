@@ -234,9 +234,11 @@ class MCU_stepper:
         if ret:
             raise error("Internal error in stepcompress")
     def is_active_axis(self, axis):
-        ffi_main, ffi_lib = chelper.get_ffi()
-        a = axis.encode()
-        return ffi_lib.itersolve_is_active_axis(self._stepper_kinematics, a)
+        raise ("This function no longer supports querying single character axis names. Update your code and the binding"
+               "to the c function this calls.")
+        #ffi_main, ffi_lib = chelper.get_ffi()
+        #a = axis.encode()
+        #return ffi_lib.itersolve_is_active_axis(self._stepper_kinematics, a)
 
 # Helper code to build a stepper object from a config section
 def PrinterStepper(config, units_in_radians=False):
