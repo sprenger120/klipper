@@ -14,7 +14,7 @@ add_library(${PROJECT_NAME} SHARED
         #kin_corexz.c
         #kin_delta.c
         #kin_deltesian.c
-        kin_extruder.c
+        #kin_extruder.c
         #kin_idex.c
         #kin_polar.c
         #kin_rotary_delta.c

@@ -69,8 +69,7 @@ class Move:
         if not self.is_kinematic_move or not prev_move.is_kinematic_move:
             return
         # Allow extruder to calculate its maximum junction
-        extruder_v2 = self.toolhead.extruder.calc_junction(prev_move, self)
-        max_start_v2 = min(extruder_v2, self.max_cruise_v2,
+        max_start_v2 = min(self.max_cruise_v2,
                            prev_move.max_cruise_v2, prev_move.next_junction_v2,
                            prev_move.max_start_v2 + prev_move.delta_v2)
         # Find max velocity using "approximated centripetal velocity"
@@ -269,7 +268,6 @@ class ToolHead:
         # Create kinematics class
         gcode = self.printer.lookup_object('gcode')
         self.Coord = gcode.Coord
-        self.extruder = kinematics.extruder.DummyExtruder(self.printer)
         kin_name = config.get('kinematics')
         try:
             mod = importlib.import_module('kinematics.' + kin_name)
@@ -312,7 +310,6 @@ class ToolHead:
             clear_history_time = flush_time - MOVE_HISTORY_EXPIRE
         free_time = sg_flush_time - self.kin_flush_delay
         self.trapq_finalize_moves(self.trapq, free_time, clear_history_time)
-        self.extruder.update_move_time(free_time, clear_history_time)
         # Flush stepcompress and mcu steppersync
         for m in self.all_mcus:
             m.flush_moves(flush_time, clear_history_time)
@@ -355,8 +352,6 @@ class ToolHead:
                     move.start_pos[0], move.start_pos[1], move.start_pos[2],
                     move.axes_r[0], move.axes_r[1], move.axes_r[2],
                     move.start_v, move.cruise_v, move.accel)
-            if move.axes_d[3]:
-                self.extruder.move(next_move_time, move)
             next_move_time = (next_move_time + move.accel_t
                               + move.cruise_t + move.decel_t)
             for cb in move.timing_callbacks:
@@ -501,11 +496,6 @@ class ToolHead:
             if not self.can_pause:
                 break
             eventtime = self.reactor.pause(eventtime + 0.100)
-    def set_extruder(self, extruder, extrude_pos):
-        self.extruder = extruder
-        self.commanded_pos[3] = extrude_pos
-    def get_extruder(self):
-        return self.extruder
     # Homing "drip move" handling
     def _update_drip_move_time(self, next_print_time):
         flush_delay = DRIP_TIME + STEPCOMPRESS_FLUSH_TIME + self.kin_flush_delay
