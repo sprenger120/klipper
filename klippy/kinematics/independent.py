@@ -78,7 +78,7 @@ class IndependentKinematics:
         inst: MCU_stepper = PrinterStepper(stepper_section_config)
 
         # todo check if axis_index can be transferred like that
-        inst.setup_itersolve('ind_stepper_calc_position', axis_index)
+        inst.setup_itersolve('independent_stepper_alloc', axis_index)
 
         # all steppers must be able to move at the same time, so they get to share the same trapq
         inst.set_trapq(self._toolhead.get_trapq())
