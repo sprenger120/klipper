@@ -27,7 +27,6 @@ class IndependentKinematics:
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
         # To not have to modify the GCode interface steppers are numerated alphabetically
         # Also enforces clear naming without gaps
-        # todo check that this still works correctly and name and index isnt swapped
         for axis_name, axis_index in enumerate_axis_lowercase(self._number_of_axis).items():
             section_name = "stepper_" + axis_name
             if not config.has_section(section_name):

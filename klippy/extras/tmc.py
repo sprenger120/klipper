@@ -380,7 +380,7 @@ class TMCCommandHelper:
     def _handle_mcu_identify(self):
         # Lookup stepper object
         # Not loading force_move in MCU_Stepper anymore, using IndependentKinematics lookup_stepper instead
-        # only works with this kin, others don't have this method
+        # only works with this kin; others don't have this method
         toolhead : ToolHead = self.printer.lookup_object("toolhead")
         self.stepper = toolhead.kin.lookup_stepper(self.stepper_name)
         # Note pulse duration and step_both_edge optimizations available
