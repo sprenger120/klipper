@@ -118,7 +118,7 @@ trapq_check_sentinels(struct trapq *tq)
         return;
     }
     tail_sentinel->print_time = m->print_time + m->move_t;
-    tail_sentinel->start_pos = move_get_coord(m, m->move_t);
+    move_get_coord(m, m->move_t, tq->number_of_axis, tail_sentinel->start_pos.axis);
 }
 
 #define MAX_NULL_MOVE 1.0
