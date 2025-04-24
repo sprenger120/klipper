@@ -221,9 +221,6 @@ defs_std = """
 defs_kin_independent = """
     struct stepper_kinematics * 
         independent_stepper_alloc(size_t axis_index);
-    double
-    ind_stepper_calc_position(struct stepper_kinematics *sk, struct move *m
-        , double move_time);
 """
 
 defs_all = [
