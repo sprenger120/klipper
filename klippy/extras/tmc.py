@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, collections
 import stepper
+from klippy.toolhead import ToolHead
 
 
 ######################################################################
@@ -378,8 +379,10 @@ class TMCCommandHelper:
             self.printer.invoke_shutdown(str(e))
     def _handle_mcu_identify(self):
         # Lookup stepper object
-        force_move = self.printer.lookup_object("force_move")
-        self.stepper = force_move.lookup_stepper(self.stepper_name)
+        # Not loading force_move in MCU_Stepper anymore, using IndependentKinematics lookup_stepper instead
+        # only works with this kin, others don't have this method
+        toolhead : ToolHead = self.printer.lookup_object("toolhead")
+        self.stepper = toolhead.kin.lookup_stepper(self.stepper_name)
         # Note pulse duration and step_both_edge optimizations available
         self.stepper.setup_default_pulse_duration(.000000100, True)
     def _handle_stepper_enable(self, print_time, is_enable):

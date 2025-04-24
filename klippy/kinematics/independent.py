@@ -84,6 +84,13 @@ class IndependentKinematics:
         inst.set_trapq(self._toolhead.get_trapq())
         return inst
 
+    # config_name is 'stepper_x' or 'stepper_aa'
+    def lookup_stepper(self, config_name: str) -> MCU_stepper | None:
+        axis_name = config_name.split('_')
+        if len(axis_name) != 2:
+            return None
+        return self._steppers[axis_name[1]]
+
 
 def load_kinematics(toolhead, config):
     return IndependentKinematics(toolhead, config)
