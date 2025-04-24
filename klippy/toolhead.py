@@ -265,6 +265,8 @@ class ToolHead:
         self.trapq_append = ffi_lib.trapq_append
         self.trapq_finalize_moves = ffi_lib.trapq_finalize_moves
         self.step_generators = []
+        self.trapq_start_pos_buff = ffi_main.new("double[]", self.number_of_axis)
+        self.trapq_axes_r_buff = ffi_main.new("double[]", self.number_of_axis)
         # Create kinematics class
         gcode = self.printer.lookup_object('gcode')
         self.Coord = gcode.Coord
@@ -346,11 +348,14 @@ class ToolHead:
         next_move_time = self.print_time
         for move in moves:
             if move.is_kinematic_move:
+                for n in range(len(move.start_pos)):
+                    self.trapq_start_pos_buff[n] = move.start_pos[n]
+                for n in range(len(move.axes_r)):
+                    self.trapq_axes_r_buff[n] = move.axes_r[n]
                 self.trapq_append(
                     self.trapq, next_move_time,
                     move.accel_t, move.cruise_t, move.decel_t,
-                    move.start_pos[0], move.start_pos[1], move.start_pos[2],
-                    move.axes_r[0], move.axes_r[1], move.axes_r[2],
+                    self.trapq_start_pos_buff, self.trapq_axes_r_buff,
                     move.start_v, move.cruise_v, move.accel)
             next_move_time = (next_move_time + move.accel_t
                               + move.cruise_t + move.decel_t)
