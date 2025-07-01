@@ -8,3 +8,4 @@ klippy/chelper/.idea
 klippy/chelper/cmake-build-debug
 build
 *.egg-info
+dist
