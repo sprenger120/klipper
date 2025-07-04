@@ -26,18 +26,15 @@ class Move:
         self.axes_d = axes_d = [end_pos[i] - start_pos[i] for i in range(0, len(start_pos))]
         self.move_d = move_d = math.sqrt(sum([d*d for d in axes_d]))
         if move_d < .000000001:
-            raise "This code path is not modified for independent moves yet"
-            # # Extrude only move
-            # self.end_pos = (start_pos[0], start_pos[1], start_pos[2],
-            #                 end_pos[3])
-            # axes_d[0] = axes_d[1] = axes_d[2] = 0.
-            # self.move_d = move_d = abs(axes_d[3])
-            # inv_move_d = 0.
-            # if move_d:
-            #     inv_move_d = 1. / move_d
-            # self.accel = 99999999.9
-            # velocity = speed
-            # self.is_kinematic_move = False
+            # No axis moves
+
+            # move_d is near zero, can't put 1 / 0.0 as it would NaN poison the lookahead queue
+            inv_move_d = 0
+
+            # original code put this in. probably some workaround so the queue can work with this code
+            self.accel = 99999999.9
+            velocity = speed
+            self.is_kinematic_move = False
         else:
             inv_move_d = 1. / move_d
         self.axes_r = [d * inv_move_d for d in axes_d]
