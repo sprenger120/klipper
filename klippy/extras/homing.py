@@ -4,6 +4,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, math
+from klippy.variable_axes_count import enumerate_axes_uppercase
 
 HOMING_START_DELAY = 0.001
 ENDSTOP_SAMPLE_TIME = .000015
@@ -268,16 +269,18 @@ class PrinterHoming:
                 "Probe triggered prior to movement")
         return epos
     def cmd_G28(self, gcmd):
+        toolhead = self.printer.lookup_object('toolhead')
         # Move to origin
         axes = []
-        for pos, axis in enumerate('XYZ'):
+        all_axes = enumerate_axes_uppercase(toolhead.number_of_axes)
+        for axis, pos in all_axes.items():
             if gcmd.get(axis, None) is not None:
                 axes.append(pos)
         if not axes:
-            axes = [0, 1, 2]
+            axes = [pos for axis, pos in all_axes.items()]
         homing_state = Homing(self.printer)
         homing_state.set_axes(axes)
-        kin = self.printer.lookup_object('toolhead').get_kinematics()
+        kin = toolhead.get_kinematics()
         try:
             kin.home(homing_state)
         except self.printer.command_error:
