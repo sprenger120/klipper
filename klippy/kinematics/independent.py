@@ -4,7 +4,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
-from typing import Dict
+from typing import Dict, List, Tuple
 from configparser import RawConfigParser
 
 from klippy.configfile import ConfigWrapper
@@ -21,11 +21,10 @@ class IndependentKinematics:
         self._printer: Printer = config.get_printer()
         self._toolhead: ToolHead = toolhead
 
-        self._steppers: Dict[str, MCU_stepper] = {}
-        self._number_of_axis: int = getNumberOfAxis(config)
+        self._axes: List[Tuple[str, int, PrinterRail]] = []
         self._number_of_axes: int = getNumberOfAxes(config)
 
-        # load MCU_Stepper instances
+        # load PrinterRail instances
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
         # To not have to modify the GCode interface steppers are numerated alphabetically
         # Also enforces clear naming without gaps
@@ -34,34 +33,43 @@ class IndependentKinematics:
             if not config.has_section(section_name):
                 raise error(
                     "Config section {} not found. You defined {} stepper sections but there is an enumeration gap."
-                    .format(section_name, self._number_of_axis))
+                    .format(section_name, self._number_of_axes))
 
-            inst = self._create_and_setup_mcu_stepper_inst(config.getsection(section_name), axis_index)
+            inst = PrinterRail(config.getsection(section_name))
             if inst is None:
-                raise error("Creation of MCU_Stepper instance failed")
-            self._steppers[axis_name] = inst
+                raise error("Creation of PrinterRail instance failed")
+            inst.setup_itersolve('independent_stepper_alloc', axis_index)
+            # all steppers must be able to move at the same time, so they get to share the same trapq
+            inst.set_trapq(self._toolhead.get_trapq())
+            # register stepper instances with ToolHead
+            self._toolhead.register_step_generator(inst.get_steppers()[0].generate_steps)
+            self._axes.append((axis_name, axis_index, inst))
 
-        # register stepper instances with ToolHead
-        for stepper in self._steppers.values():
-            self._toolhead.register_step_generator(stepper.generate_steps)
 
         # toolhead.Coord is fixed to X,Y,Z,E coordinates
+        # todo still necessary?
         # Leaving it for now until a solution that satisfies our dynamic amount of steppers is found
         self.axes_minmax: Coord = toolhead.Coord(0., 0., 0., 0.)
 
-    def get_steppers(self) -> [MCU_stepper]:
-        return [stepper for axis_name, stepper in self._steppers]
+    def get_steppers(self) -> List[MCU_stepper]:
+        return [rail.get_steppers()[0] for axis_name, index, rail in self._axes]
 
     def calc_position(self, stepper_positions):
         return [0, 0, 0]
 
-    def set_position(self, newpos, homing_axes):
+    def set_position(self, newpos : List, homing_axes : str):
+        # todo required for homing
+        # todo newpos list is usually four entries long, how long is it now?
+        # todo ToolHead.set_position to independent size
         pass
 
     def clear_homing_state(self, clear_axes):
         pass
 
-    def home(self, homing_state):
+    def home(self, homing_state : Homing):
+        # todo required for homing
+        # todo setup for homing
+        # homing_state.home call to start the process
         pass
 
     def check_move(self, move):
@@ -74,23 +82,15 @@ class IndependentKinematics:
             'axis_maximum': self.axes_minmax,
         }
 
-    def _create_and_setup_mcu_stepper_inst(self, stepper_section_config: ConfigWrapper, axis_index: int) -> MCU_stepper | None:
-        # PrinterStepper is a helper function to create an MCU_Stepper object
-        inst: MCU_stepper = PrinterStepper(stepper_section_config)
-
-        # todo check if axis_index can be transferred like that
-        inst.setup_itersolve('independent_stepper_alloc', axis_index)
-
-        # all steppers must be able to move at the same time, so they get to share the same trapq
-        inst.set_trapq(self._toolhead.get_trapq())
-        return inst
-
     # config_name is 'stepper_x' or 'stepper_aa'
     def lookup_stepper(self, config_name: str) -> MCU_stepper | None:
-        axis_name = config_name.split('_')
-        if len(axis_name) != 2:
+        searched_axis_name = config_name.split('_')
+        if len(searched_axis_name) != 2:
             return None
-        return self._steppers[axis_name[1]]
+        for axis_name, index, rail in self._axes:
+            if axis_name == searched_axis_name[1]:
+                return rail.get_steppers()[0]
+        return None
 
 
 def load_kinematics(toolhead, config):
