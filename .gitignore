@@ -6,6 +6,7 @@ klippy/.version
 .idea
 klippy/chelper/.idea
 klippy/chelper/cmake-build-debug
+klippy/chelper/*.so
 build
 *.egg-info
 dist
