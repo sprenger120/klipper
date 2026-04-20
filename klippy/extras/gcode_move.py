@@ -5,7 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
 from klippy.stepper import getNumberOfAxes
-from klippy.variable_axis_count import enumerate_axes_uppercase
+from klippy.variable_axes_count import enumerate_axes_uppercase
 from typing import Dict
 
 class GCodeMove:

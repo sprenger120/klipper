@@ -12,7 +12,8 @@ from klippy.toolhead import ToolHead
 from klippy.klippy import Printer
 from klippy.stepper import PrinterStepper, MCU_stepper, error, getNumberOfAxes, PrinterRail
 from klippy.gcode import Coord
-from klippy.variable_axis_count import enumerate_axis_lowercase
+from klippy.variable_axes_count import enumerate_axes_lowercase
+from klippy.extras.homing import Homing
 
 
 class IndependentKinematics:
