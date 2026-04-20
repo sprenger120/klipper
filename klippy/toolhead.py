@@ -215,8 +215,8 @@ class ToolHead:
         self.mcu = self.all_mcus[0]
         self.lookahead = LookAheadQueue(self)
         self.lookahead.set_flush_time(BUFFER_TIME_HIGH)
-        self.number_of_axis = getNumberOfAxes(config)
-        self.commanded_pos = [0.] * self.number_of_axis
+        self.number_of_axes = getNumberOfAxes(config)
+        self.commanded_pos = [0.] * self.number_of_axes
         # Velocity and acceleration control
         self.max_velocity = config.getfloat('max_velocity', above=0.)
         self.max_accel = config.getfloat('max_accel', above=0.)
@@ -258,12 +258,12 @@ class ToolHead:
         self.kin_flush_times = []
         # Setup iterative solver
         ffi_main, ffi_lib = chelper.get_ffi()
-        self.trapq = ffi_main.gc(ffi_lib.trapq_alloc(self.number_of_axis), ffi_lib.trapq_free)
+        self.trapq = ffi_main.gc(ffi_lib.trapq_alloc(self.number_of_axes), ffi_lib.trapq_free)
         self.trapq_append = ffi_lib.trapq_append
         self.trapq_finalize_moves = ffi_lib.trapq_finalize_moves
         self.step_generators = []
-        self.trapq_start_pos_buff = ffi_main.new("double[]", self.number_of_axis)
-        self.trapq_axes_r_buff = ffi_main.new("double[]", self.number_of_axis)
+        self.trapq_start_pos_buff = ffi_main.new("double[]", self.number_of_axes)
+        self.trapq_axes_r_buff = ffi_main.new("double[]", self.number_of_axes)
         # Create kinematics class
         gcode = self.printer.lookup_object('gcode')
         self.Coord = gcode.Coord
