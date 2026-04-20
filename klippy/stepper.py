@@ -5,7 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging, collections
 import chelper
-from typing import Dict
+from typing import Dict, List
 
 from klippy.configfile import ConfigWrapper
 from configparser import RawConfigParser
@@ -308,7 +308,7 @@ class PrinterRail:
                  default_position_endstop=None, units_in_radians=False):
         # Primary stepper and endstop
         self.stepper_units_in_radians = units_in_radians
-        self.steppers = []
+        self.steppers: List[MCU_stepper] = []
         self.endstops = []
         self.endstop_map = {}
         self.add_extra_stepper(config)
