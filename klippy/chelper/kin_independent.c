@@ -1,6 +1,6 @@
 // Independent kinematics stepper pulse time generation
 //
-// Copyright (C) 2024 Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2024 Michael Albrecht <micha.albrecht95@gmail.com>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 #include <stdlib.h> // malloc
