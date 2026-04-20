@@ -10,7 +10,7 @@ from configparser import RawConfigParser
 from klippy.configfile import ConfigWrapper
 from klippy.toolhead import ToolHead
 from klippy.klippy import Printer
-from klippy.stepper import PrinterStepper, MCU_stepper, error, getNumberOfAxis
+from klippy.stepper import PrinterStepper, MCU_stepper, error, getNumberOfAxes, PrinterRail
 from klippy.gcode import Coord
 from klippy.variable_axis_count import enumerate_axis_lowercase
 
@@ -22,12 +22,13 @@ class IndependentKinematics:
 
         self._steppers: Dict[str, MCU_stepper] = {}
         self._number_of_axis: int = getNumberOfAxis(config)
+        self._number_of_axes: int = getNumberOfAxes(config)
 
         # load MCU_Stepper instances
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
         # To not have to modify the GCode interface steppers are numerated alphabetically
         # Also enforces clear naming without gaps
-        for axis_name, axis_index in enumerate_axis_lowercase(self._number_of_axis).items():
+        for axis_name, axis_index in enumerate_axes_lowercase(self._number_of_axes).items():
             section_name = "stepper_" + axis_name
             if not config.has_section(section_name):
                 raise error(

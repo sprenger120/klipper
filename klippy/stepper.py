@@ -439,5 +439,5 @@ def LookupMultiRail(config, need_position_minmax=True,
     return rail
 
 # One Stepper = One Axis on this klipper fork
-def getNumberOfAxis(config : ConfigWrapper) -> int:
+def getNumberOfAxes(config : ConfigWrapper) -> int:
     return sum(s.startswith("stepper_") for s in config.fileconfig.sections())

@@ -4,8 +4,8 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
-from klippy.stepper import getNumberOfAxis
-from klippy.variable_axis_count import enumerate_axis_uppercase
+from klippy.stepper import getNumberOfAxes
+from klippy.variable_axis_count import enumerate_axes_uppercase
 from typing import Dict
 
 class GCodeMove:
@@ -42,17 +42,17 @@ class GCodeMove:
         self.Coord = gcode.Coord
         # G-Code coordinate manipulation
         self.absolute_coord = self.absolute_extrude = True
-        self.number_of_axis = getNumberOfAxis(config)
-        self.base_position = [0.0] * self.number_of_axis
-        self.last_position = [0.0] * self.number_of_axis
-        self.homing_position = [0.0] * self.number_of_axis
+        self.number_of_axes = getNumberOfAxes(config)
+        self.base_position = [0.0] * self.number_of_axes
+        self.last_position = [0.0] * self.number_of_axes
+        self.homing_position = [0.0] * self.number_of_axes
         self.speed = 25.
         self.speed_factor = 1. / 60.
         self.extrude_factor = 1.
         # G-Code state
         self.saved_states = {}
         self.move_transform = self.move_with_transform = None
-        self.position_with_transform = (lambda: [0.0] * self.number_of_axis)
+        self.position_with_transform = (lambda: [0.0] * self.number_of_axes)
     def _handle_ready(self):
         self.is_printer_ready = True
         if self.move_transform is None:
@@ -113,7 +113,7 @@ class GCodeMove:
     def reset_last_position(self):
         if self.is_printer_ready:
             updated_last_pos = self.position_with_transform()
-            if len(updated_last_pos) != self.number_of_axis:
+            if len(updated_last_pos) != self.number_of_axes:
                 raise "position_with_transform() returned an incorrectly sized array."
             self.last_position = updated_last_pos
     # G-Code movement commands
@@ -121,7 +121,7 @@ class GCodeMove:
         # Move
         params : Dict[str, str] = gcmd.get_command_parameters()
         try:
-            for axis, pos in enumerate_axis_uppercase(self.number_of_axis).items():
+            for axis, pos in enumerate_axes_uppercase(self.number_of_axes).items():
                 if axis in params:
                     v = float(params[axis])
                     if not self.absolute_coord:

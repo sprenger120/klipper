@@ -11,21 +11,21 @@ from string import ascii_lowercase, ascii_uppercase
 # Returns dictionary of {axis name: 0-based index}
 # Axis name consists of lowercase english alphabet letters in the following scheme:
 # aa: 0, ab: 1, ac: 2, ..., az: 25, aaa: 26, aab: 27, ...
-def enumerate_axis_lowercase(number_of_axis: int) -> Dict[str, int]:
-    return _enumerate_axis(number_of_axis, 'a', ascii_lowercase)
+def enumerate_axes_lowercase(number_of_axis: int) -> Dict[str, int]:
+    return _enumerate_axes(number_of_axis, 'a', ascii_lowercase)
 
 
 # AA: 0, AB: 1, AC: 2, ..., AZ: 25, AAA: 26, AAB: 27, ...'
-def enumerate_axis_uppercase(number_of_axis: int) -> Dict[str, int]:
-    return _enumerate_axis(number_of_axis, 'A', ascii_uppercase)
+def enumerate_axes_uppercase(number_of_axis: int) -> Dict[str, int]:
+    return _enumerate_axes(number_of_axis, 'A', ascii_uppercase)
 
 
-def _enumerate_axis(number_of_axis: int, prefix: str, letters: str) -> Dict[str, int]:
+def _enumerate_axes(number_of_axes: int, prefix: str, letters: str) -> Dict[str, int]:
     output: Dict[str, int] = {}
-    while len(output) < number_of_axis:
+    while len(output) < number_of_axes:
         for letter in letters:
             output[prefix + letter] = len(output)
-            if len(output) == number_of_axis:
+            if len(output) == number_of_axes:
                 break
         prefix += prefix[0]
     return output
