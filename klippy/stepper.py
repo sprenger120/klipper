@@ -46,17 +46,21 @@ class MCU_stepper:
         self._mcu_position_offset = 0.
         self._reset_cmd_tag = self._get_position_cmd = None
         self._active_callbacks = []
-        ffi_main, ffi_lib = chelper.get_ffi()
-        self._stepqueue = ffi_main.gc(ffi_lib.stepcompress_alloc(oid),
+        self.ffi_main, ffi_lib = chelper.get_ffi()
+        self._stepqueue = self.ffi_main.gc(ffi_lib.stepcompress_alloc(oid),
                                       ffi_lib.stepcompress_free)
         ffi_lib.stepcompress_set_invert_sdir(self._stepqueue, self._invert_dir)
         self._mcu.register_stepqueue(self._stepqueue)
         self._stepper_kinematics = None
         self._itersolve_generate_steps = ffi_lib.itersolve_generate_steps
         self._itersolve_check_active = ffi_lib.itersolve_check_active
-        self._trapq = ffi_main.NULL
+        self._trapq = self.ffi_main.NULL
         self._mcu.get_printer().register_event_handler('klippy:connect',
                                                        self._query_mcu_position)
+        # see self._setup_independent_axis_if_necessary()
+        self.toolhead = None
+        self.itersolv_set_position_buff = None
+        self.itersolv_calc_position_from_coord_buff = None
     def get_mcu(self):
         return self._mcu
     def get_name(self, short=False):
@@ -130,15 +134,30 @@ class MCU_stepper:
         ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.stepcompress_set_invert_sdir(self._stepqueue, invert_dir)
         self._mcu.get_printer().send_event("stepper:set_dir_inverted", self)
+    def _setup_independent_axis_if_necessary(self):
+        # toolhead's c'tor is not completed when this classes' c'tor runs
+        # acquisition of number of axis has to be done lazily
+        if self.toolhead is not None: return
+        self.toolhead = self._mcu.get_printer().lookup_object('toolhead')
+        self.itersolv_set_position_buff = self.ffi_main.new("double[]", self.toolhead.number_of_axes)
+        self.itersolv_calc_position_from_coord_buff = self.ffi_main.new("double[]", self.toolhead.number_of_axes)
     def calc_position_from_coord(self, coord):
+        self._setup_independent_axis_if_necessary()
         ffi_main, ffi_lib = chelper.get_ffi()
+        for n in range(self.toolhead.number_of_axes):
+            self.itersolv_calc_position_from_coord_buff[n] = coord[n]
         return ffi_lib.itersolve_calc_position_from_coord(
-            self._stepper_kinematics, coord[0], coord[1], coord[2])
+            self._stepper_kinematics, self.itersolv_calc_position_from_coord_buff)
     def set_position(self, coord):
+        self._setup_independent_axis_if_necessary()
         mcu_pos = self.get_mcu_position()
         sk = self._stepper_kinematics
+        if len(coord) != self.toolhead.number_of_axes:
+            raise "This code path is trying to use a non-independent axis count"
         ffi_main, ffi_lib = chelper.get_ffi()
-        ffi_lib.itersolve_set_position(sk, coord[0], coord[1], coord[2])
+        for n in range(self.toolhead.number_of_axes):
+            self.itersolv_set_position_buff[n] = coord[n]
+        ffi_lib.itersolve_set_position(sk, self.itersolv_set_position_buff)
         self._set_mcu_position(mcu_pos)
     def get_commanded_position(self):
         ffi_main, ffi_lib = chelper.get_ffi()

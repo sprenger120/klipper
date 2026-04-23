@@ -4,7 +4,11 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, math
-from klippy.variable_axes_count import enumerate_axes_uppercase
+
+from klippy.toolhead import ToolHead
+from klippy.variable_axes_count import enumerate_axes_uppercase, enumerate_axes_lowercase
+from typing import List
+from klippy.stepper import PrinterRail
 
 HOMING_START_DELAY = 0.001
 ENDSTOP_SAMPLE_TIME = .000015
@@ -56,7 +60,7 @@ class HomingMove:
     def _calc_endstop_rate(self, mcu_endstop, movepos, speed):
         startpos = self.toolhead.get_position()
         axes_d = [mp - sp for mp, sp in zip(movepos, startpos)]
-        move_d = math.sqrt(sum([d*d for d in axes_d[:3]]))
+        move_d = math.sqrt(sum([d * d for d in axes_d]))
         move_t = move_d / speed
         max_steps = max([(abs(s.calc_position_from_coord(startpos)
                               - s.calc_position_from_coord(movepos))
@@ -72,7 +76,8 @@ class HomingMove:
             sname = stepper.get_name()
             kin_spos[sname] += offsets.get(sname, 0) * stepper.get_step_dist()
         thpos = self.toolhead.get_position()
-        return list(kin.calc_position(kin_spos))[:3] + thpos[3:]
+        return list(kin.calc_position(kin_spos)) + thpos
+
     def homing_move(self, movepos, speed, probe_pos=False,
                     triggered=True, check_triggered=True):
         # Notify start of homing/probing move
@@ -163,10 +168,12 @@ class HomingMove:
 class Homing:
     def __init__(self, printer):
         self.printer = printer
-        self.toolhead = printer.lookup_object('toolhead')
+        self.toolhead: ToolHead = printer.lookup_object('toolhead')
         self.changed_axes = []
         self.trigger_mcu_pos = {}
         self.adjust_pos = {}
+        self.axis_names = enumerate_axes_lowercase(self.toolhead.number_of_axes)
+
     def set_axes(self, axes):
         self.changed_axes = axes
     def get_axes(self):
@@ -184,14 +191,19 @@ class Homing:
         return thcoord
     def set_homed_position(self, pos):
         self.toolhead.set_position(self._fill_coord(pos))
-    def home_rails(self, rails, forcepos, movepos):
+
+    def home_rails(self, rails: List[PrinterRail], forcepos: List[float | None], movepos: List[float | None]):
         # Notify of upcoming homing operation
         self.printer.send_event("homing:home_rails_begin", self, rails)
         # Alter kinematics class to think printer is at forcepos
-        force_axes = [axis for axis in range(3) if forcepos[axis] is not None]
-        homing_axes = "".join(["xyz"[i] for i in force_axes])
-        startpos = self._fill_coord(forcepos)
-        homepos = self._fill_coord(movepos)
+        force_axes: List[int] = [axis for axis in range(len(forcepos)) if forcepos[axis] is not None]
+        homing_axes : List[str] | None= None
+        if len(force_axes) > 0:
+            # lookup axis names from index
+            homing_axes = [key for axis_index in force_axes for key, value in self.axis_names.items() if
+                           value == axis_index]
+        startpos: List[float] = self._fill_coord(forcepos)
+        homepos: List[float] = self._fill_coord(movepos)
         self.toolhead.set_position(startpos, homing_axes=homing_axes)
         # Perform first home
         endstops = [es for rail in rails for es in rail.get_endstops()]
@@ -204,7 +216,7 @@ class Homing:
             startpos = self._fill_coord(forcepos)
             homepos = self._fill_coord(movepos)
             axes_d = [hp - sp for hp, sp in zip(homepos, startpos)]
-            move_d = math.sqrt(sum([d*d for d in axes_d[:3]]))
+            move_d = math.sqrt(sum([d * d for d in axes_d]))
             retract_r = min(1., hi.retract_dist / move_d)
             retractpos = [hp - ad * retract_r
                           for hp, ad in zip(homepos, axes_d)]

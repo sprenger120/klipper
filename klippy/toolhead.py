@@ -6,6 +6,7 @@
 import math, logging, importlib
 import mcu, chelper, kinematics.extruder
 from klippy.stepper import getNumberOfAxes
+from typing import List
 
 
 # Common suffixes: _d is distance (in mm), _v is velocity (in
@@ -264,6 +265,7 @@ class ToolHead:
         self.step_generators = []
         self.trapq_start_pos_buff = ffi_main.new("double[]", self.number_of_axes)
         self.trapq_axes_r_buff = ffi_main.new("double[]", self.number_of_axes)
+        self.trapq_set_position_buff = ffi_main.new("double[]", self.number_of_axes)
         # Create kinematics class
         gcode = self.printer.lookup_object('gcode')
         self.Coord = gcode.Coord
@@ -457,11 +459,17 @@ class ToolHead:
     # Movement commands
     def get_position(self):
         return list(self.commanded_pos)
-    def set_position(self, newpos, homing_axes=""):
+    def set_position(self, newpos, homing_axes : List[str] | None=None):
+        if homing_axes is None:
+            homing_axes = []
         self.flush_step_generation()
         ffi_main, ffi_lib = chelper.get_ffi()
+        if len(newpos) != self.number_of_axes:
+            raise "This code path is trying to use a non-independent axis count"
+        for n in range(self.number_of_axes):
+            self.trapq_set_position_buff[n] = newpos[n]
         ffi_lib.trapq_set_position(self.trapq, self.print_time,
-                                   newpos[0], newpos[1], newpos[2])
+                                   self.trapq_set_position_buff)
         self.commanded_pos[:] = newpos
         self.kin.set_position(newpos, homing_axes)
         self.printer.send_event("toolhead:set_position")
