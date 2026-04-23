@@ -5,6 +5,9 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
 
+from klippy.toolhead import ToolHead
+from klippy.variable_axes_count import enumerate_axes_lowercase
+
 DISABLE_STALL_TIME = 0.100
 
 # Tracking of shared stepper enable pins
@@ -89,12 +92,12 @@ class PrinterStepperEnable:
         enable = setup_enable_pin(self.printer, config.get('enable_pin', None))
         self.enable_lines[name] = EnableTracking(mcu_stepper, enable)
     def motor_off(self):
-        toolhead = self.printer.lookup_object('toolhead')
+        toolhead : ToolHead = self.printer.lookup_object('toolhead')
         toolhead.dwell(DISABLE_STALL_TIME)
         print_time = toolhead.get_last_move_time()
         for el in self.enable_lines.values():
             el.motor_disable(print_time)
-        toolhead.get_kinematics().clear_homing_state("xyz")
+        toolhead.get_kinematics().clear_homing_state(enumerate_axes_lowercase(toolhead.number_of_axes).keys())
         self.printer.send_event("stepper_enable:motor_off", print_time)
         toolhead.dwell(DISABLE_STALL_TIME)
     def motor_debug_enable(self, stepper, enable):
