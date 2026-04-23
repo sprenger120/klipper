@@ -92,7 +92,6 @@ class GCodeMove:
         return old_transform
     def _get_gcode_position(self):
         p = [lp - bp for lp, bp in zip(self.last_position, self.base_position)]
-        p[3] /= self.extrude_factor
         return p
     def _get_gcode_speed(self):
         return self.speed / self.speed_factor
@@ -161,19 +160,19 @@ class GCodeMove:
         self.absolute_coord = False
     def cmd_G92(self, gcmd):
         # Set position
-        raise "This code path is not modified for independent moves yet"
-        offsets = [ gcmd.get_float(a, None) for a in 'XYZE' ]
+        offsets = [ gcmd.get_float(a, None) for a in enumerate_axes_uppercase(self.number_of_axes).keys() ]
         for i, offset in enumerate(offsets):
             if offset is not None:
-                if i == 3:
-                    offset *= self.extrude_factor
                 self.base_position[i] = self.last_position[i] - offset
-        if offsets == [None, None, None, None]:
+        if all(o is not None for o in offsets):
             self.base_position = list(self.last_position)
     def cmd_M114(self, gcmd):
         # Get Current Position
         p = self._get_gcode_position()
-        gcmd.respond_raw("X:%.3f Y:%.3f Z:%.3f E:%.3f" % tuple(p))
+        out = ""
+        for axis_name, index in enumerate_axes_uppercase(self.number_of_axes).items():
+            out += "{}:{:.3f} ".format(axis_name, p[index])
+        gcmd.respond_raw(out)
     def cmd_M220(self, gcmd):
         # Set speed factor override percentage
         value = gcmd.get_float('S', 100., above=0.) / (60. * 100.)
