@@ -69,6 +69,7 @@ class HomingMove:
         if max_steps <= 0.:
             return .001
         return move_t / max_steps
+
     def calc_toolhead_pos(self, kin_spos, offsets):
         kin_spos = dict(kin_spos)
         kin = self.toolhead.get_kinematics()
@@ -87,9 +88,9 @@ class HomingMove:
         kin = self.toolhead.get_kinematics()
         kin_spos = {s.get_name(): s.get_commanded_position()
                     for s in kin.get_steppers()}
-        self.stepper_positions = [ StepperPosition(s, name)
-                                   for es, name in self.endstops
-                                   for s in es.get_steppers() ]
+        self.stepper_positions = [StepperPosition(s, name)
+                                  for es, name in self.endstops
+                                  for s in es.get_steppers()]
         # Start endstop checking
         print_time = self.toolhead.get_last_move_time()
         endstop_triggers = []
@@ -156,6 +157,7 @@ class HomingMove:
         if error is not None:
             raise self.printer.command_error(error)
         return trigpos
+
     def check_no_movement(self):
         if self.printer.get_start_args().get('debuginput') is not None:
             return None
@@ -163,6 +165,7 @@ class HomingMove:
             if sp.start_pos == sp.trig_pos:
                 return sp.endstop_name
         return None
+
 
 # State tracking of homing requests
 class Homing:
@@ -176,12 +179,16 @@ class Homing:
 
     def set_axes(self, axes):
         self.changed_axes = axes
+
     def get_axes(self):
         return self.changed_axes
+
     def get_trigger_position(self, stepper_name):
         return self.trigger_mcu_pos[stepper_name]
+
     def set_stepper_adjustment(self, stepper_name, adjustment):
         self.adjust_pos[stepper_name] = adjustment
+
     def _fill_coord(self, coord):
         # Fill in any None entries in 'coord' with current toolhead position
         thcoord = list(self.toolhead.get_position())
@@ -189,6 +196,7 @@ class Homing:
             if coord[i] is not None:
                 thcoord[i] = coord[i]
         return thcoord
+
     def set_homed_position(self, pos):
         self.toolhead.set_position(self._fill_coord(pos))
 
@@ -249,12 +257,14 @@ class Homing:
                 homepos[axis] = newpos[axis]
             self.toolhead.set_position(homepos)
 
+
 class PrinterHoming:
     def __init__(self, config):
         self.printer = config.get_printer()
         # Register g-code commands
         gcode = self.printer.lookup_object('gcode')
         gcode.register_command('G28', self.cmd_G28)
+
     def manual_home(self, toolhead, endstops, pos, speed,
                     triggered, check_triggered):
         hmove = HomingMove(self.printer, endstops, toolhead)
@@ -266,6 +276,7 @@ class PrinterHoming:
                 raise self.printer.command_error(
                     "Homing failed due to printer shutdown")
             raise
+
     def probing_move(self, mcu_probe, pos, speed):
         endstops = [(mcu_probe, "probe")]
         hmove = HomingMove(self.printer, endstops)
@@ -280,6 +291,7 @@ class PrinterHoming:
             raise self.printer.command_error(
                 "Probe triggered prior to movement")
         return epos
+
     def cmd_G28(self, gcmd):
         toolhead = self.printer.lookup_object('toolhead')
         # Move to origin
@@ -301,6 +313,7 @@ class PrinterHoming:
                     "Homing failed due to printer shutdown")
             self.printer.lookup_object('stepper_enable').motor_off()
             raise
+
 
 def load_config(config):
     return PrinterHoming(config)
