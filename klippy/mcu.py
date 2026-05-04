@@ -560,13 +560,14 @@ class MCU:
         self._baud = 0
         self._canbus_iface = None
         canbus_uuid = config.get('canbus_uuid', None)
+        self._network_address = config.get('network', None)
         if canbus_uuid is not None:
             self._serialport = canbus_uuid
             self._canbus_iface = config.get('canbus_interface', 'can0')
             cbid = self._printer.load_object(config, 'canbus_ids')
             cbid.add_uuid(config, canbus_uuid, self._canbus_iface)
             self._printer.load_object(config, 'canbus_stats %s' % (self._name,))
-        else:
+        elif self._network_address is None:
             self._serialport = config.get('serial')
             if not (self._serialport.startswith("/dev/rpmsg_")
                     or self._serialport.startswith("/tmp/klipper_host_")):
@@ -787,6 +788,9 @@ class MCU:
                     nodeid = cbid.get_nodeid(self._serialport)
                     self._serial.connect_canbus(self._serialport, nodeid,
                                                 self._canbus_iface)
+                if self._network_address is not None:
+                    self._serial.connect_network(self._network_address)
+                    pass
                 elif self._baud:
                     # Cheetah boards require RTS to be deasserted
                     # else a reset will trigger the built-in bootloader.

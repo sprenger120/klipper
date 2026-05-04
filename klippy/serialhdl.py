@@ -5,7 +5,8 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, threading, os
 import serial
-
+import re
+import socket
 import msgproto, chelper, util
 
 class error(Exception):
@@ -202,6 +203,35 @@ class SerialReader:
         self.serialqueue = self.ffi_main.gc(
             self.ffi_lib.serialqueue_alloc(self.serial_dev.fileno(), b'f', 0),
             self.ffi_lib.serialqueue_free)
+    def connect_network(self, address : str):
+        # allowing unix-syntax udp://[ipv6%device]:port, udp://ipv4:port
+        # with tcp and udp
+        p = re.compile(r"(?P<protocol>udp|tcp)://(?:\[?(?P<host6>[0-9a-f:]+(?:%[a-z0-9]+)?)]?|"
+                   r"(?P<host4>[\d.]+)):(?P<port>\d{1,5})")
+        match = p.search(address)
+
+        protocol = match.group('protocol')
+        if protocol is None:
+            raise "Unknown network protocol. Only udp and tcp are supported."
+        protocol = socket.SOL_UDP if protocol == "udp" else socket.SOL_TCP
+        host_addr = match.group("host6")
+        if host_addr is None:
+            host_addr = match.group("host4")
+            if host_addr is None:
+                raise "Unknown host address"
+            else:
+                addr_type = socket.AF_INET
+        else:
+            addr_type = socket.AF_INET6
+        port = match.group('port')
+        if port is None:
+            raise "Invalid network port format"
+        port = int(port)
+
+        address_info = socket.getaddrinfo(host_addr, port, addr_type, socket.SOCK_DGRAM, protocol)
+        # todo open own udp socket for reception
+
+        pass
     def set_clock_est(self, freq, conv_time, conv_clock, last_clock):
         self.ffi_lib.serialqueue_set_clock_est(
             self.serialqueue, freq, conv_time, conv_clock, last_clock)
