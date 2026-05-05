@@ -22,6 +22,8 @@
 #include <string.h> // memset
 #include <termios.h> // tcflush
 #include <unistd.h> // pipe
+#include <sys/socket.h> //sendto, recvfrom
+#include <netdb.h>
 #include "compiler.h" // __visible
 #include "list.h" // list_add_tail
 #include "msgblock.h" // message_alloc
@@ -42,6 +44,7 @@ struct serialqueue {
     uint8_t input_buf[4096];
     uint8_t need_sync;
     int input_pos;
+    struct addrinfo* mcu_addr;
     // Threading
     pthread_t tid;
     pthread_mutex_t lock; // protects variables below
@@ -85,6 +88,7 @@ struct serialqueue {
 #define SQT_UART 'u'
 #define SQT_CAN 'c'
 #define SQT_DEBUGFILE 'f'
+#define SQT_UDP 'p'
 
 #define MIN_RTO 0.025
 #define MAX_RTO 5.000
@@ -299,7 +303,8 @@ handle_message(struct serialqueue *sq, double eventtime, int len)
 static void
 input_event(struct serialqueue *sq, double eventtime)
 {
-    if (sq->serial_fd_type == SQT_CAN) {
+    if (sq->serial_fd_type == SQT_CAN)
+    {
         struct can_frame cf;
         int ret = read(sq->serial_fd, &cf, sizeof(cf));
         if (ret <= 0) {
@@ -312,8 +317,15 @@ input_event(struct serialqueue *sq, double eventtime)
         memcpy(&sq->input_buf[sq->input_pos], cf.data, cf.can_dlc);
         sq->input_pos += cf.can_dlc;
     } else {
-        int ret = read(sq->serial_fd, &sq->input_buf[sq->input_pos]
-                       , sizeof(sq->input_buf) - sq->input_pos);
+        int ret;
+        uint8_t* const buf = &sq->input_buf[sq->input_pos];
+        const size_t buflen = sizeof(sq->input_buf) - sq->input_pos;
+        if (sq->serial_fd_type == SQT_UDP)
+        {
+            ret = recv(sq->serial_fd, buf, buflen, 0);
+        } else  {
+           ret = read(sq->serial_fd, buf, buflen);
+        }
         if (ret <= 0) {
             if(ret < 0)
                 report_errno("read", ret);
@@ -360,6 +372,15 @@ kick_event(struct serialqueue *sq, double eventtime)
 static void
 do_write(struct serialqueue *sq, void *buf, int buflen)
 {
+    if (sq->serial_fd_type == SQT_UDP)
+    {
+        // network transfer
+        const ssize_t ret = sendto(sq->serial_fd, buf, buflen, 0,
+            sq->mcu_addr->ai_addr, sq->mcu_addr->ai_addrlen);
+        if (ret < 0)
+            report_errno("sendto", ret);
+        return;
+    }
     if (sq->serial_fd_type != SQT_CAN) {
         int ret = write(sq->serial_fd, buf, buflen);
         if (ret < 0)
@@ -623,7 +644,7 @@ background_thread(void *data)
 
 // Create a new 'struct serialqueue' object
 struct serialqueue * __visible
-serialqueue_alloc(int serial_fd, char serial_fd_type, int client_id)
+serialqueue_alloc(int serial_fd, char serial_fd_type, int client_id, const char* hostname, const char* service_name)
 {
     struct serialqueue *sq = malloc(sizeof(*sq));
     memset(sq, 0, sizeof(*sq));
@@ -634,6 +655,27 @@ serialqueue_alloc(int serial_fd, char serial_fd_type, int client_id)
     int ret = pipe(sq->pipe_fds);
     if (ret)
         goto fail;
+
+    // communication over network
+    if (hostname != NULL && strlen(hostname) > 0 && service_name != NULL && strlen(service_name) > 0)
+    {
+
+        // resolve mcu address into addrinfo for sendto()
+        struct addrinfo hints = {0};
+        if (strchr(hostname, ':') == NULL)
+        {
+            hints.ai_flags = AF_INET;
+        } else
+        {
+            hints.ai_flags = AF_INET6;
+        }
+        hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = IPPROTO_UDP;
+        if (getaddrinfo(hostname, service_name, &hints, &(sq->mcu_addr)) != 0)
+        {
+            goto fail;
+        }
+    }
 
     // Reactor setup
     sq->pr = pollreactor_alloc(SQPF_NUM, SQPT_NUM, sq);
@@ -726,6 +768,7 @@ serialqueue_free(struct serialqueue *sq)
     }
     pthread_mutex_unlock(&sq->lock);
     pollreactor_free(sq->pr);
+    freeaddrinfo(sq->mcu_addr);
     free(sq);
 }
 

@@ -19,6 +19,8 @@ class SerialReader:
         # Serial port
         self.serial_dev = None
         self.msgparser = msgproto.MessageParser(warn_prefix=warn_prefix)
+        # network
+        self.udp_sock = None
         # C interface
         self.ffi_main, self.ffi_lib = chelper.get_ffi()
         self.serialqueue = None
@@ -77,11 +79,11 @@ class SerialReader:
                     # Done
                     return identify_data
                 identify_data += msgdata
-    def _start_session(self, serial_dev, serial_fd_type=b'u', client_id=0):
+    def _start_session(self, serial_dev, serial_fd_type=b'u', client_id=0, hostname : str = "", service_name: str = ""):
         self.serial_dev = serial_dev
         self.serialqueue = self.ffi_main.gc(
             self.ffi_lib.serialqueue_alloc(serial_dev.fileno(),
-                                           serial_fd_type, client_id),
+                                           serial_fd_type, client_id, hostname.encode(), service_name.encode()),
             self.ffi_lib.serialqueue_free)
         self.background_thread = threading.Thread(target=self._bg_thread)
         self.background_thread.start()
@@ -200,38 +202,27 @@ class SerialReader:
     def connect_file(self, debugoutput, dictionary, pace=False):
         self.serial_dev = debugoutput
         self.msgparser.process_identify(dictionary, decompress=False)
+        empty_string = "".encode()
         self.serialqueue = self.ffi_main.gc(
-            self.ffi_lib.serialqueue_alloc(self.serial_dev.fileno(), b'f', 0),
+            self.ffi_lib.serialqueue_alloc(self.serial_dev.fileno(), b'f', 0, empty_string, empty_string),
             self.ffi_lib.serialqueue_free)
     def connect_network(self, address : str):
-        # allowing unix-syntax udp://[ipv6%device]:port, udp://ipv4:port
-        # with tcp and udp
-        p = re.compile(r"(?P<protocol>udp|tcp)://(?:\[?(?P<host6>[0-9a-f:]+(?:%[a-z0-9]+)?)]?|"
-                   r"(?P<host4>[\d.]+)):(?P<port>\d{1,5})")
+        # allowing [ipv6%device]:port,ipv4:port
+        p = re.compile(r"(?:\[?(?P<host6>[0-9a-f:]+(?:%[a-z0-9]+)?)]?|(?P<host4>[\d.]+)):(?P<port>\d{1,5})")
         match = p.search(address)
-
-        protocol = match.group('protocol')
-        if protocol is None:
-            raise "Unknown network protocol. Only udp and tcp are supported."
-        protocol = socket.SOL_UDP if protocol == "udp" else socket.SOL_TCP
         host_addr = match.group("host6")
+        listen_all_interfaces_addr = "::"
+        protocol = socket.AF_INET6
         if host_addr is None:
             host_addr = match.group("host4")
+            listen_all_interfaces_addr = "0.0.0.0"
+            protocol = socket.AF_INET
             if host_addr is None:
                 raise "Unknown host address"
-            else:
-                addr_type = socket.AF_INET
-        else:
-            addr_type = socket.AF_INET6
         port = match.group('port')
-        if port is None:
-            raise "Invalid network port format"
-        port = int(port)
-
-        address_info = socket.getaddrinfo(host_addr, port, addr_type, socket.SOCK_DGRAM, protocol)
-        # todo open own udp socket for reception
-
-        pass
+        self.udp_sock = socket.socket(protocol, socket.SOCK_DGRAM)
+        self.udp_sock.bind((listen_all_interfaces_addr, 0))
+        self._start_session(self.udp_sock, serial_fd_type=b'p', hostname=host_addr, service_name=port)
     def set_clock_est(self, freq, conv_time, conv_clock, last_clock):
         self.ffi_lib.serialqueue_set_clock_est(
             self.serialqueue, freq, conv_time, conv_clock, last_clock)
