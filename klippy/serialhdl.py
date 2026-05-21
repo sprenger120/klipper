@@ -208,17 +208,25 @@ class SerialReader:
             self.ffi_lib.serialqueue_free)
     def connect_network(self, address : str):
         # allowing [ipv6%device]:port,ipv4:port
-        p = re.compile(r"(?:\[?(?P<host6>[0-9a-f:]+(?:%[a-z0-9]+)?)]?|(?P<host4>[\d.]+)):(?P<port>\d{1,5})")
+        p = re.compile(r"(\[?(?P<host6>[0-9a-f:]+(%(?P<iface>[a-z0-9]+))?)]?|(?P<host4>[\d.]+)):(?P<port>\d{1,5})")
         match = p.search(address)
         host_addr = match.group("host6")
         listen_all_interfaces_addr = "::"
         protocol = socket.AF_INET6
+        iface = match.group("iface")
         if host_addr is None:
             host_addr = match.group("host4")
             listen_all_interfaces_addr = "0.0.0.0"
             protocol = socket.AF_INET
             if host_addr is None:
-                raise "Unknown host address"
+                raise error("Unknown host address")
+        if iface is not None:
+            # check if iface actually exists
+            # if it doesn't linux will only give unhelpful errors
+            # upon binding a socket
+            all_ifaces = socket.if_nameindex()
+            if not any(iface == name for index, name in all_ifaces):
+                raise error(f"Specified interface {iface} not found")
         port = match.group('port')
         self.udp_sock = socket.socket(protocol, socket.SOCK_DGRAM)
         self.udp_sock.bind((listen_all_interfaces_addr, 0))

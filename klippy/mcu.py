@@ -790,7 +790,6 @@ class MCU:
                                                 self._canbus_iface)
                 if self._network_address is not None:
                     self._serial.connect_network(self._network_address)
-                    pass
                 elif self._baud:
                     # Cheetah boards require RTS to be deasserted
                     # else a reset will trigger the built-in bootloader.
