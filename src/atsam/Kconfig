@@ -120,6 +120,10 @@ choice
     config ATSAM_SERIAL
         bool "Serial"
         select SERIAL
+    config ATSAM_RS_485_SERIAL
+        bool "RS-485 serial (on PD15/PD16, drive enable PC10)"
+        depends on MACH_SAME70Q20B
+        select SERIAL
     config ATSAM_MMENU_CANBUS_PC12_PD12
         bool "CAN bus (on PC12/PD12)"
         depends on HAVE_SAM_CANBUS
