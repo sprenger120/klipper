@@ -94,3 +94,16 @@ G0 AA10 AB-50.0 AS4 F200
 You can no longer use X,Y,Z, E.. as axis names; feed rate (F) works. Homing works the same as long as you
 have end stops for every axis. This might become tedious if you have a lot of motors.
 
+## Extra features
+
+### Connect to MCU via UDP 
+
+You are able to specify an IPv6 or IPv4 address and port of a network (UDP-Protocol) to UART converter to which 
+an MCU board is attached. Data that is usually passed via serial to the MCU is now passed to your specified UDP address. 
+Raw data of klippy is transmitted unaltered. In order to respond your network to UART converter will need to respond 
+to the source address and port (randomly chosen) of the received UDP packet.
+
+```ini
+[mcu]
+network: [fe80::7040:a4ff:fe36:f61%eth0]:4242
+```
