@@ -34,6 +34,7 @@ usb-src-$(CONFIG_MACH_SAM4) := atsam/sam4_usb.c
 usb-src-$(CONFIG_MACH_SAME70) := atsam/sam3_usb.c
 src-$(CONFIG_USBSERIAL) += $(usb-src-y) atsam/chipid.c generic/usb_cdc.c
 src-$(CONFIG_SERIAL) += atsam/serial.c generic/serial_irq.c
+src-$(CONFIG_SERIAL_HALFDUPLEX) += atsam/serial_halfduplex.c generic/serial_irq.c
 canbus-src-y := generic/canserial.c ../lib/fast-hash/fasthash.c
 canbus-src-y += atsam/fdcan.c atsam/chipid.c
 src-$(CONFIG_USBCANBUS) += $(canbus-src-y) $(usb-src-y) generic/usb_canbus.c
