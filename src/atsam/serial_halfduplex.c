@@ -54,20 +54,45 @@ serial_disable_tx_irq(void)
     Port->US_IDR = US_IDR_TXRDY;
 }
 
-void serial_start_break(void)
+// after calling this function, wait for TXRDY and then call stop break
+void
+serial_start_break(void)
 {
     // Starts transmission of a break after the characters present in US_THR and the Transmit Shift Register have
     // been transmitted. No effect if a break is already being transmitted.
     Port->US_CR = US_CR_USART_STTBRK_Msk;
 }
-void serial_stop_break(void)
+
+void
+serial_stop_break(void)
 {
     // Stops transmission of the break after a minimum of one character length and transmits a high level during
     // 12-bit periods. No effect if no break is being transmitted.
     Port->US_CR = US_CR_USART_STPBRK_Msk;
 }
 
-// todo timeout
+void
+serial_start_timeout(void)
+{
+    // timeout length, two characters of 8N1
+    Port->US_RTOR = (1+8+1) * 2;
+    // start timeout immediately
+    Port->US_CR = US_CR_USART_RETTO_Msk;
+    // enable timeout interrupt
+    Port->US_IER = US_IER_USART_LIN_TIMEOUT_Msk;
+}
+
+void
+serial_end_timeout(void)
+{
+    // disable timeout interrupt
+    Port->US_IDR = US_IDR_USART_LIN_TIMEOUT_Msk;
+    // clear timeout condition causing interrupt
+    Port->US_CR = US_CR_USART_STTTO_Msk;
+    // disable timeout detection
+    Port->US_RTOR = 0;
+}
+
 
 void
 USARTx_Handler(void)
@@ -86,6 +111,10 @@ USARTx_Handler(void)
         else
             Port->US_THR = data;
         // drive pin disable on TXEMPTY
+    }
+    if (status & US_CSR_USART_LIN_TIMEOUT_Msk)
+    {
+        // todo
     }
 }
 
@@ -107,7 +136,7 @@ serial_halfduplex_init(void)
     Port->US_MR = (US_MR_USART_MODE_NORMAL | US_MR_USART_CHMODE_NORMAL | US_MR_USCLKS_MCK |
         US_MR_CHRL_8_BIT | US_MR_USART_PAR_NO);
     Port->US_BRGR = get_pclock_frequency(Pmc_id) / (16 * CONFIG_SERIAL_BAUD);
-    Port->US_IER = UART_IER_RXRDY;
+    Port->US_IER = US_IER_RXRDY_Msk;
     armcm_enable_irq(USARTx_Handler, USARTx_IRQn, 0);
     Port->US_CR = US_CR_RXEN | US_CR_TXEN;
 }
