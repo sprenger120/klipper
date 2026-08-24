@@ -6,30 +6,40 @@ import pyshark
 from enum import Enum
 import argparse
 from pathlib import Path
+from datetime import datetime
+
+
+def now() -> float:
+    return datetime.now().timestamp()
 
 
 class Direction(Enum):
     HOST_TO_MCU = 0
     MCU_TO_HOST = 1
     UNKNOWN = -1
+
+
 class MessageBlock:
 
-    def __init__(self, direction : Direction = Direction.UNKNOWN, data=None, seq : int = -1):
+    def __init__(self, direction: Direction = Direction.UNKNOWN, data=None,
+                 seq: int = -1):
         if data is None:
             data = []
-        self.dir : Direction = direction
-        self.data : list[int] = data
-        self.seq : int = seq
+        self.dir: Direction = direction
+        self.data: list[int] = data
+        self.seq: int = seq
+
 
 class MessageBlockAssembler:
     def __init__(self, max_delta_t):
-        self.communication : list[MessageBlock] = []
+        self.communication: list[MessageBlock] = []
         self.previous_byte_t = 0
         self.previous_direction = None
         self.bytes_left_before_split = 0
         self.MAX_DELTA_T = max_delta_t
 
-    def appendByte(self, direction: Direction, time_of_arrival: float, in_data : int):
+    def appendByte(self, direction: Direction, time_of_arrival: float,
+                   in_data: int):
         if time_of_arrival - self.previous_byte_t > self.MAX_DELTA_T or \
                 self.previous_direction != direction or \
                 self.bytes_left_before_split == 0:
@@ -69,33 +79,41 @@ def parse_logic_analyzer_log(filename: str | Path):
     return assembler.get()
 
 
-def parse_wireshark_capture(filename : str | Path):
+def parse_wireshark_capture(filename: str | Path):
     HOST_IPV6 = "fe80::60e7:2f2d:54db:f634"
-    MCU_IPV6 = "fe80::b455:a4ff:fe36:f61"
+    MCU_IPV6 = "fe80::c854:edff:fe3b:68ec"
     assembler = MessageBlockAssembler(0.003)
-    capture = pyshark.FileCapture(filename)
+    display_filter = f"udp and ((ipv6.src_host == \"{HOST_IPV6}\" and ipv6.dst_host == \"{MCU_IPV6}\") or" \
+                     f"(ipv6.src_host == \"{MCU_IPV6}\" and ipv6.dst_host == \"{HOST_IPV6}\"))"
+    capture = pyshark.FileCapture(filename, display_filter=display_filter)
+
+    last_progress_info = now()
+    processed_packages = 0
     for pkg in capture:
-        if not "ipv6" in pkg or not "udp" in  pkg:
-            continue
-        if pkg["ipv6"].src == HOST_IPV6:
-            direction = Direction.HOST_TO_MCU
-        elif pkg["ipv6"].src == MCU_IPV6:
-            direction = Direction.MCU_TO_HOST
-        else:
-            continue
+        processed_packages += 1
+        if now() - last_progress_info > 2:
+            print(f"Processed {processed_packages} packages")
+            last_progress_info = now()
+
+        src = pkg["ipv6"].src
+        direction = Direction.HOST_TO_MCU if src == HOST_IPV6 else Direction.MCU_TO_HOST
+
         time = float(pkg.sniff_timestamp)
-        for byte in pkg["udp"].payload.split(":"):
-            assembler.appendByte(direction, time, int(byte, 16))
+        payload = bytearray.fromhex(pkg["udp"].payload.replace(":", ""))
+        for b in payload:
+            assembler.appendByte(direction, time, b)
     return assembler.get()
 
 
-def analyse(communication:  list[MessageBlock]):
+def analyse(communication: list[MessageBlock], out_file_path: Path):
     parser = MessageParser()
     # cmd = self.msgparser.create_command("identify_response")
     # cmd = self.msgparser.create_command("identify")
 
+    print("Analyzing")
     parsedCommunication = []
     data_dict = b''
+
     for row in communication:
         data = row.data
         seq = row.seq
@@ -116,20 +134,27 @@ def analyse(communication:  list[MessageBlock]):
             result["seq"] = str(seq)
             result["dir"] = row.dir.name
             parsedCommunication.append(result)
-        except error as e:
+        except error:
             parsedCommunication.append("parsing error")
-            print("parser error")
+        except IndexError as e:
+            parsedCommunication.append("index error")
+
+    with open(out_file_path, "w") as out_file:
+        out_file.writelines([str(row) + "\n" for row in parsedCommunication])
     # todo check for CRC errors
     print("analysis done, please rerun with debugger to see results")
+
 
 class Method(str, Enum):
     saleae_logic = "saleae_logic"
     pcapng = "pcapng"
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Process input file with a given method.")
+    parser = argparse.ArgumentParser(
+        description="Process input file with a given method.")
     parser.add_argument(
-        "--file",
+        "--infile",
         required=True,
         type=Path,
         help="Path to the input file",
@@ -140,20 +165,30 @@ def parse_args():
         choices=[m.value for m in Method],
         help=f"Processing method",
     )
+    parser.add_argument(
+        "--outfile",
+        required=True,
+        type=Path,
+        help="Path to the output file",
+    )
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
 
-    if not args.file.exists():
+    if not args.infile.exists():
         raise FileNotFoundError("File not found")
+    if args.outfile.exists():
+        raise FileExistsError("Outfile already exists")
     method = Method(args.method)
 
     if method == Method.saleae_logic:
-        comm = parse_logic_analyzer_log(args.file)
+        comm = parse_logic_analyzer_log(args.infile)
     elif method == Method.pcapng:
-        comm = parse_wireshark_capture(args.file)
+        comm = parse_wireshark_capture(args.infile)
     else:
         raise NotImplementedError("Chosen method is not implemented")
+    print("Reading file done")
 
-    analyse(comm)
+    analyse(comm, args.outfile)
