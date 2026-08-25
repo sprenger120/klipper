@@ -4,11 +4,27 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import os, re, logging, collections, shlex
+from collections import namedtuple
+from klippy.variable_axes_count import enumerate_axes_lowercase, getNumberOfAxes
 
 class CommandError(Exception):
     pass
 
-Coord = collections.namedtuple('Coord', ('x', 'y', 'z', 'e'))
+# Lazy creation of type as getNumberOfAxes() is only available
+# after main() parses startup args
+def createCoord(*args):
+    _createCoord(*args)
+
+
+Coord = createCoord
+
+
+def _createCoord(*args):
+    global Coord
+    Coord = (namedtuple("Coord",
+                   enumerate_axes_lowercase(getNumberOfAxes()).keys(),
+                   defaults=[0.0] * getNumberOfAxes()))
+    return Coord(*args)
 
 class GCodeCommand:
     error = CommandError
@@ -87,7 +103,8 @@ class GCodeCommand:
 # Parse and dispatch G-Code commands
 class GCodeDispatch:
     error = CommandError
-    Coord = Coord
+    # staticmethod to avoid `self` from slipping in Coord argument list
+    Coord = staticmethod(Coord)
     def __init__(self, printer):
         self.printer = printer
         self.is_fileinput = not not printer.get_start_args().get("debuginput")
