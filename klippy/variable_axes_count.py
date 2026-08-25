@@ -6,7 +6,7 @@
 
 from typing import Dict
 from string import ascii_lowercase, ascii_uppercase
-
+import configparser
 
 # Returns dictionary of {axis name: 0-based index}
 # Axis name consists of lowercase english alphabet letters in the following scheme:
@@ -29,3 +29,17 @@ def _enumerate_axes(number_of_axes: int, prefix: str, letters: str) -> Dict[str,
                 break
         prefix += prefix[0]
     return output
+
+
+__NUMBER_OF_AXIS : int | None = None
+def getNumberOfAxes() -> int:
+    if __NUMBER_OF_AXIS is None:
+        raise "init_number_of_axis() not called at least once before"
+    return __NUMBER_OF_AXIS
+
+def init_number_of_axis(config_file : str):
+    cfg = configparser.ConfigParser()
+    cfg.read(config_file)
+    global __NUMBER_OF_AXIS
+    __NUMBER_OF_AXIS = \
+        sum(s.startswith("stepper_") for s in cfg.sections())
