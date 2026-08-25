@@ -6,6 +6,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import sys, os, gc, optparse, logging, time, collections, importlib
 import util, reactor, queuelogger, msgproto
+from klippy.variable_axes_count import init_number_of_axis
 import gcode, configfile, pins, mcu, toolhead, webhooks
 
 message_ready = "Printer is ready"
@@ -341,6 +342,7 @@ def main():
     gc.disable()
 
     # Start Printer() class
+    init_number_of_axis(start_args['config_file'])
     while 1:
         if bglogger is not None:
             bglogger.clear_rollover_info()
