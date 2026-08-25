@@ -4,8 +4,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
-from klippy.stepper import getNumberOfAxes
-from klippy.variable_axes_count import enumerate_axes_uppercase
+from klippy.variable_axes_count import enumerate_axes_uppercase, getNumberOfAxes
 from typing import Dict
 
 class GCodeMove:
@@ -42,17 +41,17 @@ class GCodeMove:
         self.Coord = gcode.Coord
         # G-Code coordinate manipulation
         self.absolute_coord = self.absolute_extrude = True
-        self.number_of_axes = getNumberOfAxes(config)
-        self.base_position = [0.0] * self.number_of_axes
-        self.last_position = [0.0] * self.number_of_axes
-        self.homing_position = [0.0] * self.number_of_axes
+        self.number_of_axes = number_of_axes = getNumberOfAxes()
+        self.base_position = [0.0] * number_of_axes
+        self.last_position = [0.0] * number_of_axes
+        self.homing_position = [0.0] * number_of_axes
         self.speed = 25.
         self.speed_factor = 1. / 60.
         self.extrude_factor = 1.
         # G-Code state
         self.saved_states = {}
         self.move_transform = self.move_with_transform = None
-        self.position_with_transform = (lambda: [0.0] * self.number_of_axes)
+        self.position_with_transform = (lambda: [0.0] * number_of_axes)
     def _handle_ready(self):
         self.is_printer_ready = True
         if self.move_transform is None:

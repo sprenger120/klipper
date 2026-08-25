@@ -7,8 +7,6 @@ import math, logging, collections
 import chelper
 from typing import Dict, List
 
-from klippy.configfile import ConfigWrapper
-from configparser import RawConfigParser
 
 
 class error(Exception):
@@ -456,7 +454,3 @@ def LookupMultiRail(config, need_position_minmax=True,
             break
         rail.add_extra_stepper(config.getsection(config.get_name() + str(i)))
     return rail
-
-# One Stepper = One Axis on this klipper fork
-def getNumberOfAxes(config : ConfigWrapper) -> int:
-    return sum(s.startswith("stepper_") for s in config.fileconfig.sections())

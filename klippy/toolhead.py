@@ -5,7 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging, importlib
 import mcu, chelper, kinematics.extruder
-from klippy.stepper import getNumberOfAxes
+from klippy.variable_axes_count import getNumberOfAxes
 from typing import List
 
 
@@ -216,7 +216,7 @@ class ToolHead:
         self.mcu = self.all_mcus[0]
         self.lookahead = LookAheadQueue(self)
         self.lookahead.set_flush_time(BUFFER_TIME_HIGH)
-        self.number_of_axes = getNumberOfAxes(config)
+        self.number_of_axes = getNumberOfAxes()
         self.commanded_pos = [0.] * self.number_of_axes
         # Velocity and acceleration control
         self.max_velocity = config.getfloat('max_velocity', above=0.)

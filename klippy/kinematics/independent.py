@@ -9,9 +9,9 @@ from typing import Dict, List, Tuple
 from klippy.configfile import ConfigWrapper
 from klippy.toolhead import ToolHead
 from klippy.klippy import Printer
-from klippy.stepper import MCU_stepper, error, getNumberOfAxes, PrinterRail
+from klippy.stepper import MCU_stepper, error, PrinterRail
 from klippy.gcode import Coord
-from klippy.variable_axes_count import enumerate_axes_lowercase
+from klippy.variable_axes_count import enumerate_axes_lowercase, getNumberOfAxes
 from klippy.extras.homing import Homing
 
 
@@ -22,7 +22,7 @@ class IndependentKinematics:
         self._toolhead: ToolHead = toolhead
 
         self._axes: List[Tuple[str, PrinterRail]] = []
-        self._number_of_axes: int = getNumberOfAxes(config)
+        self._number_of_axes: int = getNumberOfAxes()
 
         # load PrinterRail instances
         # We are not bound by XYZ and have to look for config section names starting with "stepper_.."
