@@ -48,7 +48,7 @@ class IndependentKinematics:
         # toolhead.Coord is fixed to X,Y,Z,E coordinates
         # todo still necessary?
         # Leaving it for now until a solution that satisfies our dynamic amount of steppers is found
-        self.axes_minmax: Coord = toolhead.Coord(0., 0., 0., 0.)
+        self.axes_minmax = toolhead.Coord()
 
         self.limits: List[Tuple[float, float]] = [self.__UNHOMED_AXIS_LIMIT] * self._number_of_axes
     def get_steppers(self) -> List[MCU_stepper]:
