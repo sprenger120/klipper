@@ -82,21 +82,20 @@ class DumpTrapQ:
         ffi_main, ffi_lib = chelper.get_ffi()
         res = []
         while 1:
-            data_raw = self._create_pullmove_buffer(ffi_main, ffi_lib,
+            data = self._create_pullmove_buffer(ffi_main, ffi_lib,
                                                 number_of_entries=128)
             count = ffi_lib.trapq_extract_old(self.trapq,
-                                              ffi_main.addressof(data_raw),
-                                              data_raw.number_of_entries,
+                                              ffi_main.addressof(data),
+                                              data.number_of_entries,
                                               start_time, end_time)
             if not count:
                 break
-            data = data_raw.entries
             res.append((data, count))
-            if count < data_raw.number_of_entries:
+            if count < data.number_of_entries:
                 break
-            end_time = data[count-1].print_time
+            end_time = data.entries[count-1].print_time
         res.reverse()
-        return ([d[i] for d, cnt in res for i in range(cnt-1, -1, -1)], res)
+        return ([d.entries[i] for d, cnt in res for i in range(cnt-1, -1, -1)], res)
     def log_trapq(self, data):
         if not data:
             return
@@ -140,8 +139,11 @@ class DumpTrapQ:
     def _process_batch(self, eventtime):
         qtime = self.last_batch_msg[0] + min(self.last_batch_msg[1], 0.100)
         data, cdata = self.extract_trapq(qtime, NEVER_TIME)
+
+        ffi_main, ffi_lib = chelper.get_ffi()
+
         d = [(m.print_time, m.move_t, m.start_v, m.accel,
-              set(m.start_pos.axis), set(m.axis_r.axis))
+              ffi_main.unpack(m.start_pos.axis, getNumberOfAxes()), ffi_main.unpack(m.axis_r.axis, getNumberOfAxes()))
              for m in data]
         if d and d[0] == self.last_batch_msg:
             d.pop(0)
