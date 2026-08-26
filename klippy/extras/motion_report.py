@@ -92,7 +92,7 @@ class DumpTrapQ:
                 break
             data = data_raw.entries
             res.append((data, count))
-            if count < len(data):
+            if count < data_raw.number_of_entries:
                 break
             end_time = data[count-1].print_time
         res.reverse()
@@ -106,8 +106,8 @@ class DumpTrapQ:
             out.append("move %d: pt=%.6f mt=%.6f sv=%.6f a=%.6f"
                        " sp=(%s) ar=(%s)"
                        % (i, m.print_time, m.move_t, m.start_v, m.accel,
-                          self._print_coord(m.start_pos, axes_names),
-                          self._print_coord(m.axis_r, axes_names)))
+                          self._print_coord(m.start_pos.axis, axes_names),
+                          self._print_coord(m.axis_r.axis, axes_names)))
         logging.info('\n'.join(out))
     def _print_coord(self, iterable, axes_names):
         return ",".join(["{}:{:.6f}".format(v,n) for v, n in zip(iterable, axes_names)])
@@ -123,7 +123,7 @@ class DumpTrapQ:
         move_time = max(0., min(move.move_t, print_time - move.print_time))
         dist = (move.start_v + .5 * move.accel * move_time) * move_time
         pos = [start * r + dist for start, r in
-               zip(move.start_pos, move.axis_r)]
+               zip(move.start_pos.axis, move.axis_r.axis)]
         velocity = move.start_v + move.accel * move_time
         return pos, velocity
     def _create_pullmove_buffer(self, ffi_main, ffi_lib,
@@ -136,7 +136,7 @@ class DumpTrapQ:
         qtime = self.last_batch_msg[0] + min(self.last_batch_msg[1], 0.100)
         data, cdata = self.extract_trapq(qtime, NEVER_TIME)
         d = [(m.print_time, m.move_t, m.start_v, m.accel,
-              set(m.start_pos), set(m.axis_r))
+              set(m.start_pos.axis), set(m.axis_r.axis))
              for m in data]
         if d and d[0] == self.last_batch_msg:
             d.pop(0)
