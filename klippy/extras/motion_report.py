@@ -106,11 +106,13 @@ class DumpTrapQ:
             out.append("move %d: pt=%.6f mt=%.6f sv=%.6f a=%.6f"
                        " sp=(%s) ar=(%s)"
                        % (i, m.print_time, m.move_t, m.start_v, m.accel,
-                          self._print_coord(m.start_pos.axis, axes_names),
-                          self._print_coord(m.axis_r.axis, axes_names)))
+                          self._print_coord(m.start_pos, axes_names),
+                          self._print_coord(m.axis_r, axes_names)))
         logging.info('\n'.join(out))
-    def _print_coord(self, iterable, axes_names):
-        return ",".join(["{}:{:.6f}".format(v,n) for v, n in zip(iterable, axes_names)])
+    def _print_coord(self, coord_struct_ptr, axes_names):
+        ffi_main, ffi_lib = chelper.get_ffi()
+        iteratable = ffi_main.unpack(coord_struct_ptr.axis, getNumberOfAxes())
+        return ",".join(["{}:{:.6f}".format(v,n) for v, n in zip(iteratable, axes_names)])
     def get_trapq_position(self, print_time):
         ffi_main, ffi_lib = chelper.get_ffi()
         data = self._create_pullmove_buffer(ffi_main, ffi_lib, number_of_entries=1)
@@ -122,8 +124,11 @@ class DumpTrapQ:
         move = data.entries[0]
         move_time = max(0., min(move.move_t, print_time - move.print_time))
         dist = (move.start_v + .5 * move.accel * move_time) * move_time
+
+        start_pos = ffi_main.unpack(move.start_pos.axis, getNumberOfAxes())
+        axis_r = ffi_main.unpack(move.axis_r.axis, getNumberOfAxes())
         pos = [start * r + dist for start, r in
-               zip(move.start_pos.axis, move.axis_r.axis)]
+               zip(start_pos, axis_r)]
         velocity = move.start_v + move.accel * move_time
         return pos, velocity
     def _create_pullmove_buffer(self, ffi_main, ffi_lib,
