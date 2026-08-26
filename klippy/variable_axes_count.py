@@ -10,12 +10,11 @@ import configparser
 
 # Returns dictionary of {axis name: 0-based index}
 # Axis name consists of lowercase english alphabet letters in the following scheme:
-# aa: 0, ab: 1, ac: 2, ..., az: 25, aaa: 26, aab: 27, ...
+# a: 0, b: 1, c: 2, ..., z: 25, aa: 26, ab: 27, ..., az, ba, bb
 def enumerate_axes_lowercase(number_of_axis: int) -> Dict[str, int]:
     return _enumerate_axes(number_of_axis, 'a', ascii_lowercase)
 
 
-# AA: 0, AB: 1, AC: 2, ..., AZ: 25, AAA: 26, AAB: 27, ...'
 def enumerate_axes_uppercase(number_of_axis: int) -> Dict[str, int]:
     return _enumerate_axes(number_of_axis, 'A', ascii_uppercase)
 
