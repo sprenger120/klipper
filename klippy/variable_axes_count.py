@@ -3,7 +3,7 @@
 # Copyright (C) 2025 Michael Albrecht (micha.albrecht95@gmail.com)
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-
+from token import NUMBER
 from typing import Dict
 from string import ascii_lowercase, ascii_uppercase
 import configparser
@@ -22,12 +22,14 @@ def enumerate_axes_uppercase(number_of_axis: int) -> Dict[str, int]:
 
 def _enumerate_axes(number_of_axes: int, prefix: str, letters: str) -> Dict[str, int]:
     output: Dict[str, int] = {}
-    while len(output) < number_of_axes:
-        for letter in letters:
-            output[prefix + letter] = len(output)
-            if len(output) == number_of_axes:
-                break
-        prefix += prefix[0]
+    _BASE = len(letters)
+    for i in range (1, number_of_axes+1):
+        number = i
+        axis_name = ""
+        while number > 0:
+            number, remainder = divmod(number-1, _BASE)
+            axis_name = letters[remainder] + axis_name
+        output[prefix + axis_name] = i-1
     return output
 
 
