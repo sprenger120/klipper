@@ -6,6 +6,7 @@
 import logging
 import chelper
 from . import bulk_sensor
+from klippy.variable_axes_count import enumerate_axes_lowercase, getNumberOfAxes
 
 # Extract stepper queue_step messages
 class DumpStepper:
@@ -81,12 +82,15 @@ class DumpTrapQ:
         ffi_main, ffi_lib = chelper.get_ffi()
         res = []
         while 1:
-            raise "this codepath is not updated to the new pull_move signature"
-            data = ffi_main.new('struct pull_move[128]')
-            count = ffi_lib.trapq_extract_old(self.trapq, data, len(data),
+            data_raw = self._create_pullmove_buffer(ffi_main, ffi_lib,
+                                                number_of_entries=128)
+            count = ffi_lib.trapq_extract_old(self.trapq,
+                                              ffi_main.addressof(data_raw),
+                                              data_raw.number_of_entries,
                                               start_time, end_time)
             if not count:
                 break
+            data = data_raw.entries
             res.append((data, count))
             if count < len(data):
                 break
@@ -97,30 +101,42 @@ class DumpTrapQ:
         if not data:
             return
         out = ["Dumping trapq '%s' %d moves:" % (self.name, len(data))]
+        axes_names = enumerate_axes_lowercase(getNumberOfAxes()).keys()
         for i, m in enumerate(data):
             out.append("move %d: pt=%.6f mt=%.6f sv=%.6f a=%.6f"
-                       " sp=(%.6f,%.6f,%.6f) ar=(%.6f,%.6f,%.6f)"
+                       " sp=(%s) ar=(%s)"
                        % (i, m.print_time, m.move_t, m.start_v, m.accel,
-                          m.start_x, m.start_y, m.start_z, m.x_r, m.y_r, m.z_r))
+                          self._print_coord(m.start_pos, axes_names),
+                          self._print_coord(m.axis_r, axes_names)))
         logging.info('\n'.join(out))
+    def _print_coord(self, iterable, axes_names):
+        return ",".join(["{}:{:.6f}".format(v,n) for v, n in zip(iterable, axes_names)])
     def get_trapq_position(self, print_time):
         ffi_main, ffi_lib = chelper.get_ffi()
-        data = ffi_main.new('struct pull_move[1]')
-        count = ffi_lib.trapq_extract_old(self.trapq, data, 1, 0., print_time)
+        data = self._create_pullmove_buffer(ffi_main, ffi_lib, number_of_entries=1)
+        count = ffi_lib.trapq_extract_old(self.trapq, ffi_main.addressof(data),
+                                          data.number_of_entries, 0.,
+                                          print_time)
         if not count:
             return None, None
-        move = data[0]
+        move = data.entries[0]
         move_time = max(0., min(move.move_t, print_time - move.print_time))
-        dist = (move.start_v + .5 * move.accel * move_time) * move_time;
-        pos = (move.start_x + move.x_r * dist, move.start_y + move.y_r * dist,
-               move.start_z + move.z_r * dist)
+        dist = (move.start_v + .5 * move.accel * move_time) * move_time
+        pos = [start * r + dist for start, r in
+               zip(move.start_pos, move.axis_r)]
         velocity = move.start_v + move.accel * move_time
         return pos, velocity
+    def _create_pullmove_buffer(self, ffi_main, ffi_lib,
+                                number_of_entries: int):
+        return ffi_main.gc(
+            ffi_lib.alloc_pull_move_array(number_of_entries, getNumberOfAxes()),
+            ffi_lib.free_pull_move_array)
+
     def _process_batch(self, eventtime):
         qtime = self.last_batch_msg[0] + min(self.last_batch_msg[1], 0.100)
         data, cdata = self.extract_trapq(qtime, NEVER_TIME)
         d = [(m.print_time, m.move_t, m.start_v, m.accel,
-              (m.start_x, m.start_y, m.start_z), (m.x_r, m.y_r, m.z_r))
+              set(m.start_pos), set(m.axis_r))
              for m in data]
         if d and d[0] == self.last_batch_msg:
             d.pop(0)
@@ -155,16 +171,6 @@ class PrinterMotionReport:
         toolhead = self.printer.lookup_object("toolhead")
         trapq = toolhead.get_trapq()
         self.trapqs['toolhead'] = DumpTrapQ(self.printer, 'toolhead', trapq)
-        # Lookup extruder trapqs
-        for i in range(99):
-            ename = "extruder%d" % (i,)
-            if ename == "extruder0":
-                ename = "extruder"
-            extruder = self.printer.lookup_object(ename, None)
-            if extruder is None:
-                break
-            etrapq = extruder.get_trapq()
-            self.trapqs[ename] = DumpTrapQ(self.printer, ename, etrapq)
         # Populate 'trapq' and 'steppers' in get_status result
         self.last_status['steppers'] = list(sorted(self.steppers.keys()))
         self.last_status['trapq'] = list(sorted(self.trapqs.keys()))
@@ -205,29 +211,21 @@ class PrinterMotionReport:
         if eventtime < self.next_status_time or not self.trapqs:
             return self.last_status
         self.next_status_time = eventtime + STATUS_REFRESH_TIME
-        xyzpos = (0., 0., 0.)
-        epos = (0.,)
-        xyzvelocity = evelocity = 0.
+        toolhead = self.printer.lookup_object('toolhead')
+        xyzpos = toolhead.Coord()
+        xyzvelocity =  0.
         # Calculate current requested toolhead position
         mcu = self.printer.lookup_object('mcu')
         print_time = mcu.estimated_print_time(eventtime)
         pos, velocity = self.trapqs['toolhead'].get_trapq_position(print_time)
         if pos is not None:
-            xyzpos = pos[:3]
+            xyzpos = pos
             xyzvelocity = velocity
-        # Calculate requested position of currently active extruder
-        toolhead = self.printer.lookup_object('toolhead')
-        ehandler = self.trapqs.get(toolhead.get_extruder().get_name())
-        if ehandler is not None:
-            pos, velocity = ehandler.get_trapq_position(print_time)
-            if pos is not None:
-                epos = (pos[0],)
-                evelocity = velocity
+
         # Report status
         self.last_status = dict(self.last_status)
-        self.last_status['live_position'] = toolhead.Coord(*(xyzpos + epos))
+        self.last_status['live_position'] = toolhead.Coord(*xyzpos)
         self.last_status['live_velocity'] = xyzvelocity
-        self.last_status['live_extruder_velocity'] = evelocity
         return self.last_status
 
 def load_config(config):

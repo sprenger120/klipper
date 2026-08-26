@@ -88,6 +88,11 @@ defs_trapq = """
         struct coord start_pos;
         struct coord axis_r;
     };
+    struct pull_move_array
+    {
+      size_t number_of_entries;
+      struct pull_move *entries;
+    };
 
     struct trapq *trapq_alloc(size_t number_of_axis);
     void trapq_free(struct trapq *tq);
@@ -99,8 +104,10 @@ defs_trapq = """
                           , double clear_history_time);
     void trapq_set_position(struct trapq *tq, double print_time
                         , double const pos[]);
-    int trapq_extract_old(struct trapq *tq, struct pull_move *p, int max
+    int trapq_extract_old(struct trapq *tq, struct pull_move_array *p, int max
                       , double start_time, double end_time);
+    struct pull_move_array alloc_pull_move_array(size_t length, size_t number_of_axis);
+    void free_pull_move_array(struct pull_move_array p);
 """
 
 defs_kin_cartesian = """

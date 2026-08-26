@@ -257,27 +257,42 @@ trapq_set_position(struct trapq *tq, double print_time
 }
 
 
-struct pull_move * alloc_pull_move(size_t number_of_axis)
+struct pull_move_array __visible
+alloc_pull_move_array(const size_t length, const size_t number_of_axis)
 {
-    struct pull_move *p = malloc(sizeof(*p));
-    memset(p, 0, sizeof(*p));
-    p->start_pos = coord_alloc(number_of_axis);
-    p->axis_r = coord_alloc(number_of_axis);
-    return p;
+    const size_t malloc_size = sizeof(struct pull_move) * length;
+    struct pull_move_array out;
+    out.number_of_entries = length;
+    out.entries =  malloc(malloc_size);
+    memset(out.entries, 0, malloc_size);
+    for (size_t i=0;i<length;i++)
+    {
+        out.entries[i].start_pos = coord_alloc(number_of_axis);
+        out.entries[i].axis_r = coord_alloc(number_of_axis);
+    }
+    return out;
 }
 
-void free_pull_move(struct pull_move *p)
+void __visible
+free_pull_move_array(struct pull_move_array arr)
 {
-    coord_free(&(p->start_pos));
-    coord_free(&(p->axis_r));
-    free(p);
+    for (size_t i = 0;i<arr.number_of_entries;++i)
+    {
+        coord_free(&(arr.entries[i].start_pos));
+        coord_free(&(arr.entries[i].axis_r));
+    }
+    free(arr.entries);
 }
 
 // Return history of movement queue
 int __visible
-trapq_extract_old(struct trapq *tq, struct pull_move *p, int max
+trapq_extract_old(struct trapq *tq, struct pull_move_array *p_array, int max
                   , double start_time, double end_time)
 {
+    if (p_array->number_of_entries < max)
+    {
+        max = p_array->number_of_entries;
+    }
     int res = 0;
     struct move *m;
     list_for_each_entry(m, &tq->history, node) {
@@ -285,13 +300,15 @@ trapq_extract_old(struct trapq *tq, struct pull_move *p, int max
             break;
         if (end_time <= m->print_time)
             continue;
+        struct pull_move * p = &p_array->entries[res];
         p->print_time = m->print_time;
         p->move_t = m->move_t;
         p->start_v = m->start_v;
         p->accel = 2. * m->half_accel;
+        p->axis_r = coord_alloc(tq->number_of_axis);
+        p->start_pos = coord_alloc(tq->number_of_axis);
         memcpy(p->start_pos.axis, m->start_pos.axis, sizeof(double) * tq->number_of_axis);
         memcpy(p->axis_r.axis, m->axis_r.axis, sizeof(double) * tq->number_of_axis);
-        p++;
         res++;
     }
     return res;
