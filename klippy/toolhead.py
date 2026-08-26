@@ -574,7 +574,6 @@ class ToolHead:
         res.update({ 'print_time': print_time,
                      'stalls': self.print_stall,
                      'estimated_print_time': estimated_print_time,
-                     'extruder': self.extruder.get_name(),
                      'position': self.Coord(*self.commanded_pos),
                      'max_velocity': self.max_velocity,
                      'max_accel': self.max_accel,
