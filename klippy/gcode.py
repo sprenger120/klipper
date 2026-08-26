@@ -21,8 +21,9 @@ Coord = createCoord
 
 def _createCoord(*args):
     global Coord
+    # appending "_" so axis "as" will not be treated as a python keyword
     Coord = (namedtuple("Coord",
-                   enumerate_axes_lowercase(getNumberOfAxes()).keys(),
+                   [s + "_" for s in enumerate_axes_lowercase(getNumberOfAxes()).keys()],
                    defaults=[0.0] * getNumberOfAxes()))
     return Coord(*args)
 
