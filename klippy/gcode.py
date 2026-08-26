@@ -13,7 +13,7 @@ class CommandError(Exception):
 # Lazy creation of type as getNumberOfAxes() is only available
 # after main() parses startup args
 def createCoord(*args):
-    _createCoord(*args)
+    return _createCoord(*args)
 
 
 Coord = createCoord
