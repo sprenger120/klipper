@@ -8,6 +8,9 @@ from klippy.variable_axes_count import init_number_of_axis, getNumberOfAxes
 import sys, optparse, ast
 import matplotlib
 import readlog, analyzers
+import csv
+from pathvalidate import sanitize_filepath
+import bisect
 try:
     import urlparse
 except:
@@ -110,6 +113,8 @@ def main():
     opts.add_option("-g", "--graph", help="Graph to generate (python literal)")
     opts.add_option("-l", "--list-datasets", action="store_true",
                     help="List available datasets")
+    opts.add_option("-c", "--dataset-csv", type="string", dest="dataset_csv",
+                    default=None,  help="filename prefix of graph csv outputs")
     options, args = opts.parse_args()
     if options.list_datasets:
         list_datasets()
@@ -127,9 +132,12 @@ def main():
 
     # Default graphs to draw
     graph_descs = [
-        ["trapq(toolhead,velocity)?color=green"],
-        ["trapq(toolhead,accel)?color=green"],
-        ["deviation(stepq(stepper_x),kin(stepper_x))?color=blue"],
+        ["trapq(toolhead,ae_velocity)?color=green"],
+        ["trapq(toolhead,ae_accel)?color=green"],
+        ["trapq(toolhead,ae)?color=green"],
+        ["trapq(toolhead,aa_velocity)?color=blue"],
+        ["trapq(toolhead,aa_accel)?color=blue"],
+        ["trapq(toolhead,aa)?color=blue"],
     ]
     if options.graph is not None:
         graph_descs = ast.literal_eval(options.graph)
@@ -146,6 +154,24 @@ def main():
     else:
         fig.set_size_inches(8, 6)
         fig.savefig(options.output)
+
+    if options.dataset_csv is not None:
+
+        times = amanager.get_dataset_times()
+
+        # apply skip and duration flags
+        subset_start = bisect.bisect_left(times, options.skip)
+        subset_end = bisect.bisect_left(times, options.skip + options.duration)
+
+        time_of_interest = times[subset_start:subset_end]
+        time_offset = time_of_interest[0]
+        for name, dataset in amanager.get_datasets().items():
+            with open(options.dataset_csv + f".{name}.csv", "w") as f:
+                writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
+                data_of_interest = dataset[subset_start:subset_end]
+                for time, datum in zip(time_of_interest, data_of_interest):
+                    writer.writerow([time-time_offset, datum])
+
 
 if __name__ == '__main__':
     main()
