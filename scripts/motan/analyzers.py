@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, collections
 import readlog
+from klippy.variable_axes_count import getNumberOfAxes, enumerate_axes_lowercase
 
 
 ######################################################################
@@ -204,24 +205,24 @@ class GenKinematicPosition:
     ]
     def __init__(self, amanager, name_parts):
         self.amanager = amanager
-        stepper = name_parts[1]
+        stepper_axis = str(name_parts[1]).split("_")[1]
         status = self.amanager.get_initial_status()
         kin = status['configfile']['settings']['printer']['kinematics']
-        if kin not in ['cartesian', 'corexy']:
+        if kin not in ['cartesian', 'corexy', 'independent']:
             raise amanager.error("Unsupported kinematics '%s'" % (kin,))
-        if stepper not in ['stepper_x', 'stepper_y', 'stepper_z']:
-            raise amanager.error("Unknown stepper '%s'" % (stepper,))
-        if kin == 'corexy' and stepper in ['stepper_x', 'stepper_y']:
+        if stepper_axis not in enumerate_axes_lowercase(getNumberOfAxes()).keys():
+            raise amanager.error("Unknown stepper '%s'" % (stepper_axis,))
+        if kin == 'corexy' and stepper_axis in ['x', 'y']:
             self.source1 = 'trapq(toolhead,x)'
             self.source2 = 'trapq(toolhead,y)'
-            if stepper == 'stepper_x':
+            if stepper_axis == 'x':
                 self.generate_data = self.generate_data_corexy_plus
             else:
                 self.generate_data = self.generate_data_corexy_minus
             amanager.setup_dataset(self.source1)
             amanager.setup_dataset(self.source2)
         else:
-            self.source1 = 'trapq(toolhead,%s)' % (stepper[-1:],)
+            self.source1 = 'trapq(toolhead,%s)' % (stepper_axis,)
             self.source2 = None
             self.generate_data = self.generate_data_passthrough
             amanager.setup_dataset(self.source1)

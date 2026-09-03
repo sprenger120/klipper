@@ -4,6 +4,8 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import json, zlib
+from klippy.variable_axes_count import getNumberOfAxes, enumerate_axes_lowercase
+from klippy.gcode import Coord
 
 class error(Exception):
     pass
@@ -50,14 +52,14 @@ class HandleTrapQ:
     DataSets = [
         ('trapq(<name>,velocity)', 'Requested velocity for the given trapq'),
         ('trapq(<name>,accel)', 'Requested acceleration for the given trapq'),
-        ('trapq(<name>,<axis>)', 'Requested axis (x, y, or z) position'),
+        ('trapq(<name>,<axis>)', 'Requested axis position'),
         ('trapq(<name>,<axis>_velocity)', 'Requested axis velocity'),
         ('trapq(<name>,<axis>_accel)', 'Requested axis acceleration'),
     ]
     def __init__(self, lmanager, name, name_parts):
         self.name = name
         self.jdispatch = lmanager.get_jdispatch()
-        self.cur_data = [(0., 0., 0., 0., (0., 0., 0.), (0., 0., 0.))]
+        self.cur_data = [(0., 0., 0., 0., Coord(), Coord())]
         self.data_pos = 0
         tq, trapq_name, datasel = name_parts
         ptypes = {}
@@ -69,7 +71,7 @@ class HandleTrapQ:
             'label': '%s acceleration' % (trapq_name,),
             'units': 'Acceleration\n(mm/s^2)', 'func': self._pull_accel
         }
-        for axis, name in enumerate("xyz"):
+        for name, axis in enumerate_axes_lowercase(getNumberOfAxes()).items():
             ptypes['%s' % (name,)] = {
                 'label': '%s %s position' % (trapq_name, name), 'axis': axis,
                 'units': 'Position\n(mm)', 'func': self._pull_axis_position

@@ -4,6 +4,7 @@
 # Copyright (C) 2019-2021  Kevin O'Connor <kevin@koconnor.net>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
+from klippy.variable_axes_count import init_number_of_axis, getNumberOfAxes
 import sys, optparse, ast
 import matplotlib
 import readlog, analyzers
@@ -96,7 +97,7 @@ def list_datasets():
 
 def main():
     # Parse command-line arguments
-    usage = "%prog [options] <logname>"
+    usage = "%prog [options] <logname> <klippy_config>"
     opts = optparse.OptionParser(usage)
     opts.add_option("-o", "--output", type="string", dest="output",
                     default=None, help="filename of output graph")
@@ -112,9 +113,10 @@ def main():
     options, args = opts.parse_args()
     if options.list_datasets:
         list_datasets()
-    if len(args) != 1:
+    if len(args) != 2:
         opts.error("Incorrect number of arguments")
     log_prefix = args[0]
+    init_number_of_axis(args[1])
 
     # Open data files
     lmanager = readlog.LogManager(log_prefix)
